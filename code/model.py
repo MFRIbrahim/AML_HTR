@@ -3,15 +3,24 @@ import torch
 from torch import nn as nn
 from torch.nn import functional as F
 
-"""
-kernelVals = [5, 5, 3, 3, 3]
-featureVals = [1, 32, 64, 128, 128, 256]
-strideVals = poolVals = [(2,2), (2,2), (1,2), (1,2), (1,2)]
 
-IMAGE: 32x128
-
-"""
-
+CHAR_LIST = list(" !\"#&'()*+,-./0123456789:;?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")
+CHAR_DICT = {}
+for i in range(len(CHAR_LIST)):
+    CHAR_DICT[i] = CHAR_LIST[i]
+    
+def Decoder(matrix):
+    # matrix with shape (seq_len, batch_size, num_of_characters) --> (32,50,80)
+    C = np.argmax(matrix, axis=2).T  
+    output = []
+    for i in range(C.shape[0]):
+        sub = []
+        for j in range(C.shape[1]):
+            sub.append(CHAR_DICT[C[i][j]])
+        output.append(sub)
+    return output    
+    
+    
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
@@ -33,66 +42,56 @@ class Net(nn.Module):
             self.cnn_layers.append(nn.ReLU())
             self.cnn_layers.append(nn.MaxPool2d(kernel_size=pool_kernel_stride[i], stride=pool_kernel_stride[i], padding=0))
         
-        # ---RNN layers---    
+        # ---LSTM---    
         self.lstm = nn.LSTM(input_size=256, hidden_size=256, num_layers=2, batch_first=True, bidirectional=True)
         
-        #---CNN layer---
+        #---last CNN layer---
         self.cnn = nn.Conv2d(in_channels=512, out_channels=80, kernel_size=1, stride=1, padding=0)
     
     
     def forward(self, x):
+        # pass through CNN layers
         for layer in self.cnn_layers:
-            #print(x.shape)
-            #print(layer)
             x = layer(x)
-        print("After CNN layers:", x.shape)
-        #transform x for the lstm
+        # transformation for LSTM
         x = torch.squeeze(x)
         x = x.permute(0,2,1)
-        print("Transformation for LSTM:", x.shape)
+        # pass through LSTM
         x = self.lstm(x)
         x = x[0]
-        print("After LSTM:", x.shape)
+        # transformation for last CNN layer
         x = torch.unsqueeze(x,2)
         x = x.permute(0,3,2,1)
-        print("Transformation for last CNN layer:", x.shape)
+        # pass through last CNN layer 
         x = self.cnn(x)
-        print("After last CNN layer:", x.shape)
+        # transform for CTC_loss calc and text decoding
         x = torch.squeeze(x)
-        print("Transformation for CTC:", x.shape)
+        x = x.permute(2,0,1)
         return x
-  
 
-        
-        
-"""       
-self.conv1 = nn.Conv2d(in_channels=1, out_channels=32, kernel_size=5, stride=1, padding=0)
-self.batchnorm1 = nn.BatchNorm2d(num_features=32)
-self.relu = nn.ReLU() 
-self.maxpool1 = nn.Maxpool2d(kernel_size=(2,2), stride=(2,2))
-"""         
+
+def training():
+    net = Net()
+    learning_rate = 0.001
+    loss = nn.CTCLoss()
+    optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate)
+
 
 net = Net()
-#print(net)
+
 a = torch.rand(50, 1, 32, 128)
-print("Input:", a.shape)
+
 
 b = net(a)
-#print(b.shape)
 
+ctc_input = F.log_softmax(b)
+ctc_target = torch.randint(low=1, high=80, size=(50, 32), dtype=torch.long)
+input_lengths = torch.full(size=(50,), fill_value=32, dtype=torch.long)
+target_lengths = torch.randint(low=1, high=32, size=(50,), dtype=torch.long)
+ctc_loss = nn.CTCLoss()
+loss = ctc_loss(ctc_input, ctc_target, input_lengths, target_lengths)
+loss.backward()
 
-"""
-b = torch.squeeze(b)
-print(b.shape)
-
-b = b.permute(0,2,1)
-print(b.shape)
-
-"""
-"""
-def get_padding(size, kernel_size, stride, dilation):
-    padding = ((size - 1) * (stride - 1) + dilation * (kernel_size - 1)) //2
-    return padding
-
-padding = get_padding(128, 3, 1, 1)
-print(padding)"""
+print(loss)
+c = b.data.numpy()
+print(Decoder(c))
