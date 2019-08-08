@@ -12,7 +12,7 @@ INV_CHAR_DICT = {v: k for k, v in CHAR_DICT.items()}
 
 def Decoder(matrix):
     # matrix with shape (seq_len, batch_size, num_of_characters) --> (32,50,80)
-    C = np.argmax(matrix, axis=2).T
+    C = np.argmax(matrix, axis=2)
     output = []
     #iterate over dim 1 first, since those are the batches
     for i in range(C.shape[1]):
