@@ -109,7 +109,7 @@ def training(model, dataloader, learning_rate=0.001, verbose = True):
 def data_loader(words_file, data_dir, batch_size):
     #TODO: scale all the inputs to 32x128
     # words_file: absolute path of words.txt
-    # data_dir: absolute path of directory that contains the word folder (a01, a02, etc...)
+    # data_dir: absolute path of directory that contains the word folders (a01, a02, etc...)
     
     dataset = []
 
