@@ -137,7 +137,7 @@ def data_loader(words_file, data_dir, batch_size):
                 Y.append(y)
                 line_counter += 1
             else:
-                # add the lists to the dataset and reset the line_counter variable 
+                # add the lists to the dataset and reset the lists and line_counter variable 
                 data = (X, Y)
                 dataset.append(data)
                 Y = []
