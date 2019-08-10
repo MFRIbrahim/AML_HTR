@@ -2,6 +2,8 @@ import numpy as np
 import torch
 from torch import nn as nn
 from torch.nn import functional as F
+from PIL import Image as PImage
+import torchvision
 
 
 CHAR_LIST = list(" !\"#&'()*+,-./0123456789:;?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")
@@ -102,6 +104,54 @@ def training(model, dataloader, learning_rate=0.001, verbose = True):
         if verbose:
             print("Processed Batch {}/{}".format(batch_id, len(dataloader)))
             print("Loss: {}".format(loss))
+
+
+def data_loader(words_file, data_dir, batch_size):
+    #TODO: scale all the inputs to 32x128
+    # words_file: absolute path of words.txt
+    # data_dir: absolute path of directory that contains the word folder (a01, a02, etc...)
+    
+    dataset = []
+
+    with open(words_file) as f:
+        # line_counter counts the relevant lines to get the desired batch size
+        line_counter = 0
+        Y = []
+        X = []
+        for line in f:
+            if line_counter < batch_size:
+                # skip empty lines and information at the beginning
+                if not line.strip() or line[0] == "#":
+                    continue
+                # construct the image path from the information in the corresponding words.txt lines
+                line_split = line.strip().split(' ')
+                file_name_split = line_split[0].split('-')
+                file_name = '/' + file_name_split[0] + '/' + file_name_split[0] + '-' + file_name_split[1] + '/' + line_split[0] + '.png'
+                # load image, convert to greyscale and then to torch tensor
+                img = PImage.open(data_dir + file_name).convert('L')
+                converter = torchvision.transforms.ToTensor()
+                x = converter(img)
+                # append the image and the target, obtained from the corresponding words.txt line, to the X,Y lists
+                X.append(torch.squeeze(x))
+                y = line_split[-1]
+                Y.append(y)
+                line_counter += 1
+            else:
+                # add the lists to the dataset and reset the line_counter variable 
+                data = (X, Y)
+                dataset.append(data)
+                Y = []
+                X = []
+                line_counter = 0
+        # if total number of lines is not divisible by the batch_size, the remaining smaller batch must be added at the end
+        if len(Y) != 0 and X != 0:
+            data = (X,Y)
+            dataset.append(data)
+        
+    
+    return dataset
+    
+    
 
 
 if __name__=="__main__":
