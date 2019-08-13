@@ -66,18 +66,18 @@ class Net(nn.Module):
         for layer in self.cnn_layers:
             x = layer(x)
         # transformation for LSTM
-        x = torch.squeeze(x)
+        x = x.squeeze(2)
         x = x.permute(0,2,1)
         # pass through LSTM
         x = self.lstm(x)
         x = x[0]
         # transformation for last CNN layer
-        x = torch.unsqueeze(x,2)
+        x = x.unsqueeze(2)
         x = x.permute(0,3,2,1)
         # pass through last CNN layer
         x = self.cnn(x)
         # transform for CTC_loss calc and text decoding
-        x = torch.squeeze(x)
+        x = x.squeeze(2)
         x = x.permute(2,0,1)
         return x
 
