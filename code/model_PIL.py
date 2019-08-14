@@ -6,6 +6,7 @@ from PIL import Image as PImage
 import torchvision
 import math
 from random import shuffle
+import random
 
 CHAR_LIST = list(" !\"#&'()*+,-./0123456789:;?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")
 CHAR_DICT = {}
@@ -24,6 +25,8 @@ def Decoder(matrix):
         for j in range(C.shape[0]):
             sub.append(CHAR_DICT[C[j][i]])
         output.append(sub)
+    for i in range(len(output)):
+        output[i] = "".join(output[i])
     return output
 
 
@@ -84,7 +87,7 @@ def encodeWord(Y):
         new_Y.append(np.asarray(out))
     return new_Y
 
-def training(model, dataloader, learning_rate=0.01, verbose = True):
+def training(model, dataloader, learning_rate=0.001, verbose = True):
     loss_fct = nn.CTCLoss()
     optimizer = torch.optim.RMSprop(model.parameters(), lr=learning_rate)
     #iterate over batches
@@ -110,7 +113,7 @@ def training(model, dataloader, learning_rate=0.01, verbose = True):
             print("Loss: {}".format(loss))
 
 
-def data_loader(words_file, data_dir, batch_size, image_size):
+def data_loader(words_file, data_dir, batch_size, image_size, num_words, train_ratio):
     #TODO: scale all the inputs to 32x128
     # words_file: absolute path of words.txt
     # data_dir: absolute path of directory that contains the word folders (a01, a02, etc...)
@@ -118,10 +121,11 @@ def data_loader(words_file, data_dir, batch_size, image_size):
     dataset = []
 
     with open(words_file) as f:
-        # line_counter counts the relevant lines to get the desired batch size
+        # line_counter counts the relevant lines to get the desired batch size, counter counts relevant lines, i.e. words
         line_counter = 0
         Y = []
         X = []
+        counter = 0
         for line in f:
             if line_counter < batch_size:
                 # skip empty lines and information at the beginning
@@ -135,9 +139,10 @@ def data_loader(words_file, data_dir, batch_size, image_size):
                 try:
                     img = PImage.open(data_dir + file_name).convert('L')
                 except:
-                    #skip broken images
                     continue
-                line_counter += 1
+                if counter >= num_words:
+                    break
+                counter += 1
                 (ht, wt) = image_size
                 (w, h) = img.size
                 fx = w / wt
@@ -175,25 +180,66 @@ def data_loader(words_file, data_dir, batch_size, image_size):
         if len(Y) != 0 and len(X) != 0:
             data = (X,Y)
             dataset.append(data)
+<<<<<<< HEAD
 
 
     return dataset
 
 
+=======
+
+        # split dataset into train and test set
+        random.shuffle(dataset)
+        num_of_batches = int(num_words/batch_size)
+        num_of_train_batches = int(train_ratio*num_of_batches)
+        train_set = dataset[:num_of_train_batches-1]
+        test_set = dataset[num_of_train_batches:]
+
+    return train_set, test_set
+
+
+>>>>>>> b18a420eace48d068efaa605ff0047c02a6dd176
 
 
 if __name__=="__main__":
     model = Net()
+<<<<<<< HEAD
     n_epochs = 100
     words_file = "../dataset/words.txt"
     data_dir = "../dataset/images"
+=======
+    n_epochs = 50
+    words_file = "C:/Users/Musta/Desktop/Uni/MASTER/Veranstaltungen/Advanced Machine Learning/Project/data/words.txt"
+    data_dir = "C:/Users/Musta/Desktop/Uni/MASTER/Veranstaltungen/Advanced Machine Learning/Project/data"
+>>>>>>> b18a420eace48d068efaa605ff0047c02a6dd176
     batch_size = 50
     image_size = (32, 128)
-    dataloader = data_loader(words_file, data_dir, batch_size, image_size)
+    num_words = 10000
+    train_ratio = 0.9
+    train_set, test_set = data_loader(words_file, data_dir, batch_size, image_size, num_words, train_ratio)
     for epoch in range(n_epochs):
         #shuffle data to prevent cyclic effects
         shuffle(dataloader)
         print("Training Epoch "+ str(epoch+1))
+<<<<<<< HEAD
         training(model, dataloader, learning_rate=0.1*(1/(epoch+1)))
         #print("Not training due to missing dataloader implementation")
     torch.save(model, "../trained_models/model.chkpt")
+=======
+        training(model, train_set)
+    # testing...
+    correct = 0
+    counter = 0
+    with torch.no_grad():
+        for (X, Y) in test_set:
+            output = model(X)
+            output = np.array(output)
+            output = Decoder(output)
+            for i in range(len(output)):
+                counter += 1
+                if output[i] == Y[i]:
+                    correct += 1
+            #print(output)
+            #print(Y)
+    print("accuracy:", correct/counter)
+>>>>>>> b18a420eace48d068efaa605ff0047c02a6dd176
