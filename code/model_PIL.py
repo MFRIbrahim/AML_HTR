@@ -4,7 +4,8 @@ from torch import nn as nn
 from torch.nn import functional as F
 from PIL import Image as PImage
 import torchvision
-
+import math
+from random import shuffle
 
 CHAR_LIST = list(" !\"#&'()*+,-./0123456789:;?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")
 CHAR_DICT = {}
@@ -113,7 +114,7 @@ def data_loader(words_file, data_dir, batch_size, image_size):
     #TODO: scale all the inputs to 32x128
     # words_file: absolute path of words.txt
     # data_dir: absolute path of directory that contains the word folders (a01, a02, etc...)
-    
+
     dataset = []
 
     with open(words_file) as f:
@@ -126,13 +127,17 @@ def data_loader(words_file, data_dir, batch_size, image_size):
                 # skip empty lines and information at the beginning
                 if not line.strip() or line[0] == "#":
                     continue
-                counter += 1
                 # construct the image path from the information in the corresponding words.txt lines
                 line_split = line.strip().split(' ')
                 file_name_split = line_split[0].split('-')
                 file_name = '/' + file_name_split[0] + '/' + file_name_split[0] + '-' + file_name_split[1] + '/' + line_split[0] + '.png'
                 # load image, resize to desired image size, convert to greyscale and then to torch tensor
-                img = PImage.open(data_dir + file_name).convert('L')
+                try:
+                    img = PImage.open(data_dir + file_name).convert('L')
+                except:
+                    #skip broken images
+                    continue
+                line_counter += 1
                 (ht, wt) = image_size
                 (w, h) = img.size
                 fx = w / wt
@@ -154,7 +159,7 @@ def data_loader(words_file, data_dir, batch_size, image_size):
                 Y.append(y)
                 line_counter += 1
             else:
-                # stack the X list to a tensor and add X,Y to the dataset and reset the lists and line_counter variable 
+                # stack the X list to a tensor and add X,Y to the dataset and reset the lists and line_counter variable
                 X = torch.stack(X)
                 X = torch.unsqueeze(X, 1)
                 data = (X, Y)
@@ -162,26 +167,33 @@ def data_loader(words_file, data_dir, batch_size, image_size):
                 Y = []
                 X = []
                 line_counter = 0
+                if (len(dataset)%100 == 0):
+                    print("loaded batch {}/{}".format(len(dataset), math.ceil(115338/batch_size)))
+                    print("quitting early for testing")
+                    return dataset
         # if total number of lines is not divisible by the batch_size, the remaining smaller batch must be added at the end
         if len(Y) != 0 and len(X) != 0:
             data = (X,Y)
             dataset.append(data)
-        
-    
+
+
     return dataset
-    
-    
+
+
 
 
 if __name__=="__main__":
     model = Net()
-    n_epochs = 3
-    words_file = "C:/Users/Musta/Desktop/Uni/MASTER/Veranstaltungen/Advanced Machine Learning/Project/data/words.txt"
-    data_dir = "C:/Users/Musta/Desktop/Uni/MASTER/Veranstaltungen/Advanced Machine Learning/Project/data"
+    n_epochs = 100
+    words_file = "../dataset/words.txt"
+    data_dir = "../dataset/images"
     batch_size = 50
     image_size = (32, 128)
     dataloader = data_loader(words_file, data_dir, batch_size, image_size)
     for epoch in range(n_epochs):
+        #shuffle data to prevent cyclic effects
+        shuffle(dataloader)
         print("Training Epoch "+ str(epoch+1))
-        training(model, dataloader)
+        training(model, dataloader, learning_rate=0.1*(1/(epoch+1)))
         #print("Not training due to missing dataloader implementation")
+    torch.save(model, "../trained_models/model.chkpt")
