@@ -7,6 +7,7 @@ import torchvision
 import math
 from random import shuffle
 import random
+import cv2
 
 if torch.cuda.is_available():
     device = 'cuda'
@@ -126,9 +127,15 @@ def encodeWord(Y):
         new_Y.append(np.asarray(out))
     return new_Y
 
+def decodeWord(Y):
+    new_Y = []
+    for letter in Y:
+        new_Y.append(CHAR_DICT[letter])
+    return new_Y
+
 def training(model, dataloader, learning_rate=0.001, verbose = True):
     loss_fct = nn.CTCLoss().to(device)
-    optimizer = torch.optim.RMSprop(model.parameters(), lr=learning_rate)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
     #iterate over batches
     for (batch_id, (X, Y)) in enumerate(dataloader):
         Y = encodeWord(Y)
@@ -143,8 +150,8 @@ def training(model, dataloader, learning_rate=0.001, verbose = True):
         target_lengths = []
         for w in Y:
             target_lengths.append(len(w))
-        target_lengths = torch.Tensor(target_lengths).to(device).type(torch.int32)
-        ctc_target = torch.Tensor(ctc_target).to(device).type(torch.int32)
+        target_lengths = torch.Tensor(target_lengths).to(device).type(torch.long)
+        ctc_target = torch.Tensor(ctc_target).to(device).type(torch.long)
         loss = loss_fct(ctc_input, ctc_target, input_lengths, target_lengths)
         loss.backward()
         optimizer.step()
@@ -182,7 +189,6 @@ def data_loader(words_file, data_dir, batch_size, image_size, num_words, train_r
                     continue
                 if counter >= num_words:
                     break
-                counter += 1
                 (ht, wt) = image_size
                 (w, h) = img.size
                 fx = w / wt
@@ -194,6 +200,9 @@ def data_loader(words_file, data_dir, batch_size, image_size, num_words, train_r
                 x = converter(img)
                 x = torch.squeeze(x)
                 x = np.array(x)
+                if x.ndim != 2:
+                    continue
+                counter += 1
                 # create target image of size 32x128 and place resized image into it
                 target = np.ones([ht, wt]) * 255
                 target[0:new_size[1], 0:new_size[0]] = x
@@ -214,13 +223,19 @@ def data_loader(words_file, data_dir, batch_size, image_size, num_words, train_r
                 line_counter = 0
         # if total number of lines is not divisible by the batch_size, the remaining smaller batch must be added at the end
         if len(Y) != 0 and len(X) != 0:
+            X = torch.stack(X)
+            X = torch.unsqueeze(X, 1)
             data = (X,Y)
             dataset.append(data)
+            for i in range(len(X)):
+                cv2.imshow("Image", np.array(torch.squeeze(X)[i].cpu()))
+                cv2.waitKey(0)
+                cv2.destroyAllWindows()
         # split dataset into train and test set
         random.shuffle(dataset)
-        num_of_batches = int(num_words/batch_size)
+        num_of_batches = math.ceil(num_words/batch_size)
         num_of_train_batches = int(train_ratio*num_of_batches)
-        train_set = dataset[:num_of_train_batches-1]
+        train_set = dataset[:num_of_train_batches]
         test_set = dataset[num_of_train_batches:]
     return train_set, test_set
 
@@ -228,8 +243,10 @@ def data_loader(words_file, data_dir, batch_size, image_size, num_words, train_r
 
 
 if __name__=="__main__":
+    model_path = "../trained_models/model.chkpt"
+    retrain_model = True
     model = Net().to(device)
-    n_epochs = 10
+    n_epochs = 100
     words_file = "../dataset/words.txt"
     data_dir = "../dataset/images"
     batch_size = 50
@@ -237,24 +254,34 @@ if __name__=="__main__":
     num_words = 1000
     train_ratio = 0.9
     train_set, test_set = data_loader(words_file, data_dir, batch_size, image_size, num_words, train_ratio)
-    for epoch in range(n_epochs):
-        #shuffle data to prevent cyclic effects
-        shuffle(train_set)
-        print("Training Epoch "+ str(epoch+1))
-        training(model, train_set, learning_rate=0.1*(1/(epoch+1)))
-        #print("Not training due to missing dataloader implementation")
-    torch.save(model, "../trained_models/model.chkpt")
+    if retrain_model:
+        for epoch in range(n_epochs):
+            #shuffle data to prevent cyclic effects
+            shuffle(train_set)
+            print("Training Epoch "+ str(epoch+1))
+            training(model, train_set, learning_rate=0.004)
+            #print("Not training due to missing dataloader implementation")
+        torch.save(model, model_path)
+    else:
+        model = torch.load(model_path)
+        model.eval()
     # testing...
     correct = 0
     counter = 0
     with torch.no_grad():
-        for (X, Y) in test_set:
-            output = model(X)
-            output = np.array(output)
-            output = Best_Path_Decoder(output)
-            for i in range(len(output)):
+        for (X, Y) in train_set:
+            X = X.to(device)
+
+            output = F.softmax(model(X))
+            output = np.array(output.cpu())
+            predicted_word = Decoder(output)
+            for i in range(len(predicted_word)):
+                cv2.imshow("Image", np.array(torch.squeeze(X)[i].cpu()))
+                cv2.waitKey(0)
+                cv2.destroyAllWindows()
+                print(predicted_word[i])
                 counter += 1
-                if output[i] == Y[i]:
+                if predicted_word[i] == Y[i]:
                     correct += 1
             #print(output)
             #print(Y)
