@@ -8,6 +8,12 @@ import math
 from random import shuffle
 import random
 
+if torch.cuda.is_available():
+    device = 'cuda'
+else:
+    device = 'cpu'
+
+
 # Here we use '|' as a symbol the CTC-blank
 CHAR_LIST = list(" !\"#&'()*+,-./0123456789:;?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz|")
 CHAR_DICT = {}
@@ -41,7 +47,7 @@ def Best_Path_Decoder(matrix):
         for j in range(C.shape[0]):
             sub.append(CHAR_DICT[C[j][i]])
         output.append(sub)
-    # clean the output, i.e. remove multiple letters not seperated by '|' and '|' 
+    # clean the output, i.e. remove multiple letters not seperated by '|' and '|'
     last_letter = "abc" #invalid label
     current_letter = ""
     output_clean = []
@@ -54,11 +60,11 @@ def Best_Path_Decoder(matrix):
             last_letter = current_letter
         output_clean.append(sub)
     """
-    for i in range(len(output)): 
+    for i in range(len(output)):
         output[i] = "".join(output[i])
     """
-    
-    for i in range(len(output_clean)): 
+
+    for i in range(len(output_clean)):
         output_clean[i] = "".join(output_clean[i]).strip()
     #print(output)
     return output_clean
@@ -121,23 +127,24 @@ def encodeWord(Y):
     return new_Y
 
 def training(model, dataloader, learning_rate=0.001, verbose = True):
-    loss_fct = nn.CTCLoss()
+    loss_fct = nn.CTCLoss().to(device)
     optimizer = torch.optim.RMSprop(model.parameters(), lr=learning_rate)
     #iterate over batches
     for (batch_id, (X, Y)) in enumerate(dataloader):
         Y = encodeWord(Y)
+        X = X.to(device)
         optimizer.zero_grad()
         model_out = model(X)
-        ctc_input = F.log_softmax(model_out)
-        input_lengths = torch.full(size=(len(X),), fill_value=model_out.shape[0], dtype=torch.long)
+        ctc_input = F.log_softmax(model_out).to(device)
+        input_lengths = torch.full(size=(len(X),), fill_value=model_out.shape[0], dtype=torch.long).to(device)
         #print(len(X))
         #TODO: Check axis
         ctc_target = np.concatenate(Y, axis = 0)
         target_lengths = []
         for w in Y:
             target_lengths.append(len(w))
-        target_lengths = torch.Tensor(target_lengths).type(torch.int32)
-        ctc_target = torch.Tensor(ctc_target).type(torch.int32)
+        target_lengths = torch.Tensor(target_lengths).to(device).type(torch.int32)
+        ctc_target = torch.Tensor(ctc_target).to(device).type(torch.int32)
         loss = loss_fct(ctc_input, ctc_target, input_lengths, target_lengths)
         loss.backward()
         optimizer.step()
@@ -205,61 +212,38 @@ def data_loader(words_file, data_dir, batch_size, image_size, num_words, train_r
                 Y = []
                 X = []
                 line_counter = 0
-                if (len(dataset)%100 == 0):
-                    print("loaded batch {}/{}".format(len(dataset), math.ceil(115338/batch_size)))
-                    print("quitting early for testing")
-                    return dataset
         # if total number of lines is not divisible by the batch_size, the remaining smaller batch must be added at the end
         if len(Y) != 0 and len(X) != 0:
             data = (X,Y)
             dataset.append(data)
-<<<<<<< HEAD
-
-
-    return dataset
-
-
-=======
-
         # split dataset into train and test set
         random.shuffle(dataset)
         num_of_batches = int(num_words/batch_size)
         num_of_train_batches = int(train_ratio*num_of_batches)
         train_set = dataset[:num_of_train_batches-1]
         test_set = dataset[num_of_train_batches:]
-
     return train_set, test_set
 
 
->>>>>>> b18a420eace48d068efaa605ff0047c02a6dd176
 
 
 if __name__=="__main__":
-    model = Net()
-<<<<<<< HEAD
-    n_epochs = 100
+    model = Net().to(device)
+    n_epochs = 10
     words_file = "../dataset/words.txt"
     data_dir = "../dataset/images"
-=======
-    n_epochs = 50
-    words_file = "C:/Users/Musta/Desktop/Uni/MASTER/Veranstaltungen/Advanced Machine Learning/Project/data/words.txt"
-    data_dir = "C:/Users/Musta/Desktop/Uni/MASTER/Veranstaltungen/Advanced Machine Learning/Project/data"
->>>>>>> b18a420eace48d068efaa605ff0047c02a6dd176
     batch_size = 50
     image_size = (32, 128)
-    num_words = 10000
+    num_words = 1000
     train_ratio = 0.9
     train_set, test_set = data_loader(words_file, data_dir, batch_size, image_size, num_words, train_ratio)
     for epoch in range(n_epochs):
         #shuffle data to prevent cyclic effects
-        shuffle(dataloader)
+        shuffle(train_set)
         print("Training Epoch "+ str(epoch+1))
-<<<<<<< HEAD
-        training(model, dataloader, learning_rate=0.1*(1/(epoch+1)))
+        training(model, train_set, learning_rate=0.1*(1/(epoch+1)))
         #print("Not training due to missing dataloader implementation")
     torch.save(model, "../trained_models/model.chkpt")
-=======
-        training(model, train_set)
     # testing...
     correct = 0
     counter = 0
@@ -267,7 +251,7 @@ if __name__=="__main__":
         for (X, Y) in test_set:
             output = model(X)
             output = np.array(output)
-            output = Decoder(output)
+            output = Best_Path_Decoder(output)
             for i in range(len(output)):
                 counter += 1
                 if output[i] == Y[i]:
@@ -275,4 +259,3 @@ if __name__=="__main__":
             #print(output)
             #print(Y)
     print("accuracy:", correct/counter)
->>>>>>> b18a420eace48d068efaa605ff0047c02a6dd176
