@@ -8,7 +8,8 @@ import math
 from random import shuffle
 import random
 
-CHAR_LIST = list(" !\"#&'()*+,-./0123456789:;?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")
+# Here we use '|' as a symbol the CTC-blank
+CHAR_LIST = list(" !\"#&'()*+,-./0123456789:;?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz|")
 CHAR_DICT = {}
 for i in range(len(CHAR_LIST)):
     CHAR_DICT[i] = CHAR_LIST[i]
@@ -29,6 +30,38 @@ def Decoder(matrix):
         output[i] = "".join(output[i])
     return output
 
+def Best_Path_Decoder(matrix):
+    # matrix with shape (seq_len, batch_size, num_of_characters) --> (32,50,80)
+    C = np.argmax(matrix, axis=2)
+    output = []
+    #iterate over dim 1 first, since those are the batches
+    for i in range(C.shape[1]):
+        sub = []
+        #iterate over the sequence
+        for j in range(C.shape[0]):
+            sub.append(CHAR_DICT[C[j][i]])
+        output.append(sub)
+    # clean the output, i.e. remove multiple letters not seperated by '|' and '|' 
+    last_letter = "abc" #invalid label
+    current_letter = ""
+    output_clean = []
+    for i in range(len(output)):
+        sub = []
+        for j in range(len(output[i])):
+            current_letter = output[i][j]
+            if output[i][j] != "|" and output[i][j] != last_letter:
+                sub.append(output[i][j])
+            last_letter = current_letter
+        output_clean.append(sub)
+    """
+    for i in range(len(output)): 
+        output[i] = "".join(output[i])
+    """
+    
+    for i in range(len(output_clean)): 
+        output_clean[i] = "".join(output_clean[i]).strip()
+    #print(output)
+    return output_clean
 
 class Net(nn.Module):
     def __init__(self):
