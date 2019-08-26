@@ -227,10 +227,6 @@ def data_loader(words_file, data_dir, batch_size, image_size, num_words, train_r
             X = torch.unsqueeze(X, 1)
             data = (X,Y)
             dataset.append(data)
-            for i in range(len(X)):
-                cv2.imshow("Image", np.array(torch.squeeze(X)[i].cpu()))
-                cv2.waitKey(0)
-                cv2.destroyAllWindows()
         # split dataset into train and test set
         random.shuffle(dataset)
         num_of_batches = math.ceil(num_words/batch_size)
@@ -246,7 +242,7 @@ if __name__=="__main__":
     model_path = "../trained_models/model.chkpt"
     retrain_model = True
     model = Net().to(device)
-    n_epochs = 100
+    n_epochs = 10
     words_file = "../dataset/words.txt"
     data_dir = "../dataset/images"
     batch_size = 50
@@ -269,17 +265,13 @@ if __name__=="__main__":
     correct = 0
     counter = 0
     with torch.no_grad():
-        for (X, Y) in train_set:
+        for (X, Y) in test_set:
             X = X.to(device)
 
             output = F.softmax(model(X))
             output = np.array(output.cpu())
             predicted_word = Decoder(output)
             for i in range(len(predicted_word)):
-                cv2.imshow("Image", np.array(torch.squeeze(X)[i].cpu()))
-                cv2.waitKey(0)
-                cv2.destroyAllWindows()
-                print(predicted_word[i])
                 counter += 1
                 if predicted_word[i] == Y[i]:
                     correct += 1
