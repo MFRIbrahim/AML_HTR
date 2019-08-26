@@ -220,7 +220,7 @@ def data_loader(words_file, data_dir, batch_size, image_size, num_words, train_r
         random.shuffle(dataset)
         num_of_batches = int(num_words/batch_size)
         num_of_train_batches = int(train_ratio*num_of_batches)
-        train_set = dataset[:num_of_train_batches-1]
+        train_set = dataset[:num_of_train_batches]
         test_set = dataset[num_of_train_batches:]
     return train_set, test_set
 
