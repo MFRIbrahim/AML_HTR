@@ -16,7 +16,7 @@ else:
 
 
 # Here we use '|' as a symbol the CTC-blank
-CHAR_LIST = list(" !\"#&'()*+,-./0123456789:;?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz|")
+CHAR_LIST = list("| !\"#&'()*+,-./0123456789:;?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")
 CHAR_DICT = {}
 for i in range(len(CHAR_LIST)):
     CHAR_DICT[i] = CHAR_LIST[i]
@@ -70,6 +70,7 @@ def Best_Path_Decoder(matrix):
     #print(output)
     return output_clean
 
+
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
@@ -78,9 +79,9 @@ class Net(nn.Module):
         # ---CNN layers---
         self.cnn_layers = nn.ModuleList()
 
-        conv_kernel = [5, 5, 3, 3, 3]
-        channels = [1, 32, 64, 128, 128, 256]
-        pool_kernel_stride = [(2,2), (2,2), (2,1), (2,1), (2,1)]
+        conv_kernel = [5, 5, 3, 3, 3, 3]
+        channels = [1, 32, 64, 128, 128, 256, 256]
+        pool_kernel_stride = [(2,2), (2,2), (2,1), (2,1), (2,1), (1,1)]
 
         for i in range(len(conv_kernel)):
             if conv_kernel[i] == 5:
@@ -92,11 +93,15 @@ class Net(nn.Module):
             self.cnn_layers.append(nn.MaxPool2d(kernel_size=pool_kernel_stride[i], stride=pool_kernel_stride[i], padding=0))
 
         # ---LSTM---
-        self.lstm = nn.LSTM(input_size=256, hidden_size=256, num_layers=2, batch_first=True, bidirectional=True)
+        self.lstm = nn.LSTM(input_size=256, hidden_size=256, num_layers=4, batch_first=True)
 
         #---last CNN layer---
-        self.cnn = nn.Conv2d(in_channels=512, out_channels=80, kernel_size=1, stride=1, padding=0)
+        self.cnn = nn.Conv2d(in_channels=256, out_channels=80, kernel_size=1, stride=1, padding=0)
 
+        self.init_hidden()
+
+    def init_hidden(self):
+        self.hidden = (nn.Parameter(nn.init.xavier_uniform_(torch.Tensor(4, 50, 256).type(torch.FloatTensor)).to(device), requires_grad=True), nn.Parameter(nn.init.xavier_uniform_(torch.Tensor(4, 50, 256).type(torch.FloatTensor)), requires_grad=True).to(device))
 
     def forward(self, x):
         # pass through CNN layers
@@ -106,8 +111,7 @@ class Net(nn.Module):
         x = x.squeeze(2)
         x = x.permute(0,2,1)
         # pass through LSTM
-        x = self.lstm(x)
-        x = x[0]
+        x, self.hidden = self.lstm(x, self.hidden)
         # transformation for last CNN layer
         x = x.unsqueeze(2)
         x = x.permute(0,3,2,1)
@@ -135,14 +139,17 @@ def decodeWord(Y):
 
 def training(model, dataloader, learning_rate=0.001, verbose = True):
     loss_fct = nn.CTCLoss().to(device)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+    model.train(mode=True)
+    loss = 0
     #iterate over batches
     for (batch_id, (X, Y)) in enumerate(dataloader):
+        model.init_hidden()
         Y = encodeWord(Y)
         X = X.to(device)
         optimizer.zero_grad()
         model_out = model(X)
-        ctc_input = F.log_softmax(model_out).to(device)
+        ctc_input = F.log_softmax(model_out, dim=-1).to(device)
         input_lengths = torch.full(size=(len(X),), fill_value=model_out.shape[0], dtype=torch.long).to(device)
         #print(len(X))
         #TODO: Check axis
@@ -158,6 +165,7 @@ def training(model, dataloader, learning_rate=0.001, verbose = True):
         if verbose:
             print("Processed Batch {}/{}".format(batch_id+1, len(dataloader)))
             print("Loss: {}".format(loss))
+    return loss
 
 
 def data_loader(words_file, data_dir, batch_size, image_size, num_words, train_ratio):
@@ -240,14 +248,14 @@ def data_loader(words_file, data_dir, batch_size, image_size, num_words, train_r
 
 if __name__=="__main__":
     model_path = "../trained_models/model.chkpt"
-    retrain_model = True
+    retrain_model = False
     model = Net().to(device)
-    n_epochs = 10
+    n_epochs = 100
     words_file = "../dataset/words.txt"
     data_dir = "../dataset/images"
     batch_size = 50
     image_size = (32, 128)
-    num_words = 1000
+    num_words = 30000
     train_ratio = 0.9
     train_set, test_set = data_loader(words_file, data_dir, batch_size, image_size, num_words, train_ratio)
     if retrain_model:
@@ -255,8 +263,8 @@ if __name__=="__main__":
             #shuffle data to prevent cyclic effects
             shuffle(train_set)
             print("Training Epoch "+ str(epoch+1))
-            training(model, train_set, learning_rate=0.004)
-            #print("Not training due to missing dataloader implementation")
+            loss = training(model, train_set, learning_rate=0.005, verbose=False)
+            print("Loss: {}".format(loss))
         torch.save(model, model_path)
     else:
         model = torch.load(model_path)
@@ -266,15 +274,28 @@ if __name__=="__main__":
     counter = 0
     with torch.no_grad():
         for (X, Y) in test_set:
+            model.init_hidden()
             X = X.to(device)
-
-            output = F.softmax(model(X))
+            output = F.softmax(model(X), dim=-1)
             output = np.array(output.cpu())
-            predicted_word = Decoder(output)
+            predicted_word = Best_Path_Decoder(output)
+            for i in range(len(predicted_word)):
+                counter += 1
+                print(predicted_word[i])
+                if predicted_word[i] == Y[i]:
+                    correct += 1
+    print("test accuracy:", correct/counter)
+    correct = 0
+    counter = 0
+    with torch.no_grad():
+        for (X, Y) in train_set:
+            model.init_hidden()
+            X = X.to(device)
+            output = F.softmax(model(X), dim=-1)
+            output = np.array(output.cpu())
+            predicted_word = Best_Path_Decoder(output)
             for i in range(len(predicted_word)):
                 counter += 1
                 if predicted_word[i] == Y[i]:
                     correct += 1
-            #print(output)
-            #print(Y)
-    print("accuracy:", correct/counter)
+    print("train accuracy:", correct/counter)
