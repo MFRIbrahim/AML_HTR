@@ -79,9 +79,9 @@ class Net(nn.Module):
         # ---CNN layers---
         self.cnn_layers = nn.ModuleList()
 
-        conv_kernel = [5, 5, 3, 3, 3, 3]
+        conv_kernel = [5, 5, 3, 3, 3]
         channels = [1, 32, 64, 128, 128, 256, 256]
-        pool_kernel_stride = [(2,2), (2,2), (2,1), (2,1), (2,1), (1,1)]
+        pool_kernel_stride = [(2,2), (2,2), (2,1), (2,1), (2,1)]
 
         for i in range(len(conv_kernel)):
             if conv_kernel[i] == 5:
@@ -91,9 +91,10 @@ class Net(nn.Module):
             self.cnn_layers.append(nn.BatchNorm2d(num_features=channels[i+1]))
             self.cnn_layers.append(nn.ReLU())
             self.cnn_layers.append(nn.MaxPool2d(kernel_size=pool_kernel_stride[i], stride=pool_kernel_stride[i], padding=0))
+            self.cnn_layers.append(nn.Dropout(0.3))
 
         # ---LSTM---
-        self.lstm = nn.LSTM(input_size=256, hidden_size=256, num_layers=4, batch_first=True)
+        self.lstm = nn.LSTM(input_size=256, hidden_size=256, num_layers=4, batch_first=True, dropout=0.3)
 
         #---last CNN layer---
         self.cnn = nn.Conv2d(in_channels=256, out_channels=80, kernel_size=1, stride=1, padding=0)
@@ -137,11 +138,10 @@ def decodeWord(Y):
         new_Y.append(CHAR_DICT[letter])
     return new_Y
 
-def training(model, dataloader, learning_rate=0.001, verbose = True):
+def training(model, optimizer, dataloader, learning_rate=0.001, verbose = True):
     loss_fct = nn.CTCLoss().to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     model.train(mode=True)
-    loss = 0
+    mean_loss = 0
     #iterate over batches
     for (batch_id, (X, Y)) in enumerate(dataloader):
         model.init_hidden()
@@ -160,12 +160,13 @@ def training(model, dataloader, learning_rate=0.001, verbose = True):
         target_lengths = torch.Tensor(target_lengths).to(device).type(torch.long)
         ctc_target = torch.Tensor(ctc_target).to(device).type(torch.long)
         loss = loss_fct(ctc_input, ctc_target, input_lengths, target_lengths)
+        mean_loss += loss.item()
         loss.backward()
         optimizer.step()
         if verbose:
             print("Processed Batch {}/{}".format(batch_id+1, len(dataloader)))
             print("Loss: {}".format(loss))
-    return loss
+    return mean_loss/len(dataloader)
 
 
 def data_loader(words_file, data_dir, batch_size, image_size, num_words, train_ratio):
@@ -236,39 +237,65 @@ def data_loader(words_file, data_dir, batch_size, image_size, num_words, train_r
             data = (X,Y)
             dataset.append(data)
         # split dataset into train and test set
-        random.shuffle(dataset)
         num_of_batches = math.ceil(num_words/batch_size)
         num_of_train_batches = int(train_ratio*num_of_batches)
         train_set = dataset[:num_of_train_batches]
         test_set = dataset[num_of_train_batches:]
+        random.shuffle(train_set)
+        random.shuffle(test_set)
     return train_set, test_set
 
 
 
 
 if __name__=="__main__":
-    model_path = "../trained_models/model.chkpt"
+    model_path = "../trained_models/model_tmp.chkpt"
+    epoch = 0
+    loss = 0
     retrain_model = False
+    warm_start = True
     model = Net().to(device)
-    n_epochs = 100
+    if warm_start:
+        model = torch.load(model_path).to(device)
+    n_epochs = 50
     words_file = "../dataset/words.txt"
     data_dir = "../dataset/images"
     batch_size = 50
     image_size = (32, 128)
-    num_words = 30000
-    train_ratio = 0.9
+    num_words = 100000
+    train_ratio = 0.6
     train_set, test_set = data_loader(words_file, data_dir, batch_size, image_size, num_words, train_ratio)
+    lr = 0.01
+    optimizer = torch.optim.RMSprop(model.parameters(), lr=lr, weight_decay=0.01)
+    if warm_start:
+        checkpoint = torch.load("../trained_models/model_optim.chkpt")
+        model.load_state_dict(checkpoint['model_state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        epoch = checkpoint['epoch']
+        loss = checkpoint['loss']
     if retrain_model:
-        for epoch in range(n_epochs):
+        for k in range(n_epochs):
             #shuffle data to prevent cyclic effects
             shuffle(train_set)
             print("Training Epoch "+ str(epoch+1))
-            loss = training(model, train_set, learning_rate=0.005, verbose=False)
+            if epoch >= 50:
+                lr = 0.001
+            if epoch >= 150:
+                lr = 0.0001
+            loss = training(model, optimizer, train_set, learning_rate=lr, verbose=False)
             print("Loss: {}".format(loss))
-        torch.save(model, model_path)
+            if epoch % 10 == 0:
+                torch.save({'epoch': epoch, 'loss': loss, 'model_state_dict': model.state_dict(), 'optimizer_state_dict': optimizer.state_dict()}, "../trained_models/model_optim_tmp.chkpt")
+            epoch += 1
+            optimizer = torch.optim.RMSprop(model.parameters(), lr=lr)
+        torch.save({'epoch': epoch, 'loss': loss, 'model_state_dict': model.state_dict(), 'optimizer_state_dict': optimizer.state_dict()}, "../trained_models/model_optim.chkpt")
     else:
-        model = torch.load(model_path)
-        model.eval()
+        checkpoint = torch.load("../trained_models/model_optim.chkpt")
+        model.load_state_dict(checkpoint['model_state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        epoch = checkpoint['epoch']
+        loss = checkpoint['loss']
+    model.eval()
     # testing...
     correct = 0
     counter = 0
@@ -281,7 +308,7 @@ if __name__=="__main__":
             predicted_word = Best_Path_Decoder(output)
             for i in range(len(predicted_word)):
                 counter += 1
-                print(predicted_word[i])
+                #print(predicted_word[i])
                 if predicted_word[i] == Y[i]:
                     correct += 1
     print("test accuracy:", correct/counter)
@@ -295,6 +322,7 @@ if __name__=="__main__":
             output = np.array(output.cpu())
             predicted_word = Best_Path_Decoder(output)
             for i in range(len(predicted_word)):
+                #print(predicted_word[i])
                 counter += 1
                 if predicted_word[i] == Y[i]:
                     correct += 1
