@@ -2,10 +2,12 @@ import numpy as np
 import torch
 from torch import nn as nn
 from torch.nn import functional as F
+from torch.utils.data.dataset import Dataset
 from PIL import Image as PImage
 import cv2
 import torchvision
 import math
+import os
 
 if torch.cuda.is_available():
     device = 'cuda'
@@ -173,14 +175,149 @@ def data_loader(words_file, data_dir, batch_size, image_size):
     return dataset
 
 
+def is_file(path):
+    return os.path.exists(path) and os.path.isfile(path)
 
 
-if __name__=="__main__":
-    model = Net().to(device)
-    n_epochs = 10
+class WordsDataSet(Dataset):
+    def __init__(self, meta_file, root_dir, transform=None):
+        self.__meta_file = meta_file
+        self.__words = list()
+        self.__root_dir = root_dir
+        self.__transform = transform
+
+        self.__process_meta_file()
+        self.__availability_check()
+
+    def __process_meta_file(self):
+        with open(self.__meta_file, 'r') as fp:
+            for line in fp:
+                self.__process_meta_line(line)
+
+    def __process_meta_line(self, line):
+        if not line.startswith("#"):
+            self.__words.append(WordsMetaData.parse(line))
+
+    def __availability_check(self):
+        to_delete = []
+        for idx, word_meta in enumerate(self.__words):
+            wid = word_meta.word_id
+            folder, subfolder, counter, sub_counter = wid.split("-")
+            path = os.path.join(self.__root_dir, folder, folder + "-" + subfolder, wid + ".png")
+            if not is_file(path):
+                print("File not found:", path)
+                to_delete.append(idx)
+
+        for idx in sorted(to_delete, key=lambda x: -x):
+            del self.__words[idx]
+
+    def __len__(self):
+        return len(self.__words)
+
+    def __getitem__(self, item):
+        pass
+
+
+class BoundingBox(object):
+    def __init__(self, x, y, w, h):
+        self.__x = x
+        self.__y = y
+        self.__w = w
+        self.__h = h
+
+    @property
+    def x(self):
+        return self.__x
+
+    @property
+    def y(self):
+        return self.__y
+
+    @property
+    def pos(self):
+        return self.x, self.y
+
+    @property
+    def w(self):
+        return self.__w
+
+    @property
+    def width(self):
+        return self.w
+
+    @property
+    def h(self):
+        return self.__h
+
+    @property
+    def height(self):
+        return self.h
+
+
+class WordsMetaData(object):
+    def __init__(self, wid, segmentation_state, gray_level, bounding_box, pos_tag, transcription):
+        """
+
+        :param wid: word id
+        :param segmentation_state: 'ok' - word was correctly, 'err' - segmentation of word can be bad
+        :param gray_level: graylevel to binarize the line containing this word
+        :param bounding_box: bounding box around this word
+        :param pos_tag: the grammatical tag for this word
+        :param transcription: the transcription for this word
+        """
+        self.__wid = wid
+        self.__segmentation_state = segmentation_state
+        self.__gray_level = gray_level
+        self.__bounding_box = bounding_box
+        self.__pos_tag = pos_tag
+        self.__transcription = transcription
+
+    @property
+    def word_id(self):
+        return self.__wid
+
+    @property
+    def segmentation_state(self):
+        return self.__segmentation_state
+
+    @property
+    def gray_level(self):
+        return self.gray_level
+
+    @property
+    def bounding_box(self):
+        return self.__bounding_box
+
+    @property
+    def pos_tag(self):
+        return self.__pos_tag
+
+    @property
+    def transcription(self):
+        return self.__transcription
+
+    @staticmethod
+    def parse(line):
+        line = line.strip()
+        parts = line.split(" ")
+        wid = parts[0]
+        state = parts[1]
+        gray_level = parts[2]
+        pos_tag = parts[7]
+        transcription = parts[8]
+        box = BoundingBox(x=parts[3], y=parts[4], w=parts[5], h=parts[6])
+        return WordsMetaData(wid, state, gray_level, box, pos_tag, transcription)
+
+
+if __name__ == "__main__":
+    #model = Net().to(device)
+    #n_epochs = 10
     #TODO: Define Dataloader properly (either via pytorch or the github example)
-    dataloader = data_loader("../dataset/words.txt", "../dataset/images", 50, (32, 128))
-    print(len(dataloader))
-    for epoch in range(n_epochs):
-        print("Training Epoch "+ str(epoch+1))
-        training(model, dataloader)
+    #dataloader = data_loader("../dataset/words.txt", "../dataset/images", 50, (32, 128))
+    #print(len(dataloader))
+    #for epoch in range(n_epochs):
+    #    print("Training Epoch "+ str(epoch+1))
+    #    training(model, dataloader)
+
+    data = WordsDataSet("../dataset/words.txt", "../dataset/images")
+    print("Length:", len(data))
