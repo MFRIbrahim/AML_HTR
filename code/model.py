@@ -257,12 +257,13 @@ class WordsDataSet(Dataset):
     def __getitem__(self, idx):
         meta = self.__words[idx]
         path = meta.path(self.__root_dir)
-        sample = cv2.imread(path)
+        image = cv2.imread(path)
+        sample = {"image": image, "transcript": meta.transcription}
 
         if self.__transform is not None:
             sample = self.__transform(sample)
 
-        return {"image": sample, "transcript": meta}
+        return sample
 
 
 class BoundingBox(object):
@@ -414,4 +415,8 @@ if __name__ == "__main__":
                      writer=print):
         data_set = WordsDataSet("../dataset/words.txt", "../dataset/images", transform=transformation)
     print("Length:", len(data_set))
-    dataloader = DataLoader(data_set, batch_size=50, shuffle=True, num_workers=4)
+
+    with TimeMeasure(enter_msg="Load all batches", writer=print):
+        dataloader = DataLoader(data_set, batch_size=50, shuffle=True, num_workers=4)
+        for i_batch, sample_batched in enumerate(dataloader):
+            print(i_batch, len(sample_batched['image']), len(sample_batched['transcript']))
