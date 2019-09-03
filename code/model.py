@@ -2,12 +2,17 @@ import numpy as np
 import torch
 from torch import nn as nn
 from torch.nn import functional as F
-from torch.utils.data.dataset import Dataset
+from torch.utils.data import Dataset, DataLoader
+from torchvision import transforms
 from PIL import Image as PImage
 import cv2
 import torchvision
 import math
 import os
+from json import dump as json_write, load as json_read
+
+
+from util import TimeMeasure
 
 if torch.cuda.is_available():
     device = 'cuda'
@@ -174,20 +179,34 @@ def data_loader(words_file, data_dir, batch_size, image_size):
 
     return dataset
 
+# =====================================================================================================================
+# Data set
+# ---------------------------------------------------------------------------------------------------------------------
+
 
 def is_file(path):
     return os.path.exists(path) and os.path.isfile(path)
 
 
 class WordsDataSet(Dataset):
+    __health_state = "health_state.json"
+
     def __init__(self, meta_file, root_dir, transform=None):
         self.__meta_file = meta_file
         self.__words = list()
         self.__root_dir = root_dir
         self.__transform = transform
 
-        self.__process_meta_file()
-        self.__availability_check()
+        with TimeMeasure(enter_msg="Begin meta data loading.",
+                         exit_msg="Finished meta data loading after {} ms.",
+                         writer=print):
+            self.__process_meta_file()
+            self.__availability_check()
+
+        with TimeMeasure(enter_msg="Begin health check.",
+                         exit_msg="Finished health check after {} ms.",
+                         writer=print):
+            self.__health_check()
 
     def __process_meta_file(self):
         with open(self.__meta_file, 'r') as fp:
@@ -201,21 +220,49 @@ class WordsDataSet(Dataset):
     def __availability_check(self):
         to_delete = []
         for idx, word_meta in enumerate(self.__words):
-            wid = word_meta.word_id
-            folder, subfolder, counter, sub_counter = wid.split("-")
-            path = os.path.join(self.__root_dir, folder, folder + "-" + subfolder, wid + ".png")
+            path = word_meta.path(self.__root_dir)
             if not is_file(path):
                 print("File not found:", path)
                 to_delete.append(idx)
 
+        self.__save_delete_indices(to_delete)
+
+    def __save_delete_indices(self, to_delete):
         for idx in sorted(to_delete, key=lambda x: -x):
             del self.__words[idx]
+
+    def __health_check(self):
+        to_delete = list()
+        health_path = os.path.join(self.__root_dir, WordsDataSet.__health_state)
+        if is_file(health_path):
+            with open(health_path, 'r') as fp:
+                to_delete = json_read(fp)
+        else:
+            for idx, word_meta in enumerate(self.__words):
+                try:
+                    path = word_meta.path(self.__root_dir)
+                    cv2.cvtColor(cv2.imread(path), cv2.COLOR_BGR2GRAY)
+                except cv2.error:
+                    to_delete.append(idx)
+            print("Write corrupted indices to '{}'".format(health_path))
+            with open(health_path, 'w') as fp:
+                json_write(to_delete, fp)
+
+        print("WordsDataSet - Health Check: {} indices={} not readable.".format(len(to_delete), to_delete))
+        self.__save_delete_indices(to_delete)
 
     def __len__(self):
         return len(self.__words)
 
-    def __getitem__(self, item):
-        pass
+    def __getitem__(self, idx):
+        meta = self.__words[idx]
+        path = meta.path(self.__root_dir)
+        sample = cv2.imread(path)
+
+        if self.__transform is not None:
+            sample = self.__transform(sample)
+
+        return {"image": sample, "transcript": meta}
 
 
 class BoundingBox(object):
@@ -296,6 +343,11 @@ class WordsMetaData(object):
     def transcription(self):
         return self.__transcription
 
+    def path(self, root):
+        wid = self.word_id
+        folder, subfolder, counter, sub_counter = wid.split("-")
+        return os.path.join(root, folder, folder + "-" + subfolder, wid + ".png")
+
     @staticmethod
     def parse(line):
         line = line.strip()
@@ -308,6 +360,43 @@ class WordsMetaData(object):
         box = BoundingBox(x=parts[3], y=parts[4], w=parts[5], h=parts[6])
         return WordsMetaData(wid, state, gray_level, box, pos_tag, transcription)
 
+# =====================================================================================================================
+# Transformations
+# ---------------------------------------------------------------------------------------------------------------------
+
+
+class GrayScale(object):
+    def __init__(self):
+        pass
+
+    def __call__(self, sample):
+        image, transcript = sample["image"], sample["transcript"]
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        return {"image": gray, "transcript": transcript}
+
+
+class Rescale(object):
+    def __init__(self, new_width, new_height):
+        self.__new_width = new_width
+        self.__new_height = new_height
+
+    def __call__(self, sample):
+        image, transcript = sample["image"], sample["transcript"]
+        scaled_image = cv2.resize(image, (self.__new_width, self.__new_height))
+        return {"image": scaled_image, "transcript": transcript}
+
+
+class ToTensor(object):
+    def __init__(self):
+        self.__converter = torchvision.transforms.ToTensor()
+
+    def __call__(self, sample):
+        image, transcript = sample["image"], sample["transcript"]
+        tensor = self.__converter(image)
+        return {"image": tensor, "transcript": transcript}
+
+
+# =====================================================================================================================
 
 if __name__ == "__main__":
     #model = Net().to(device)
@@ -319,5 +408,10 @@ if __name__ == "__main__":
     #    print("Training Epoch "+ str(epoch+1))
     #    training(model, dataloader)
 
-    data = WordsDataSet("../dataset/words.txt", "../dataset/images")
-    print("Length:", len(data))
+    transformation = transforms.Compose([GrayScale(), Rescale(32, 128), ToTensor()])
+    with TimeMeasure(enter_msg="Begin initialization of data set.",
+                     exit_msg="Finished initialization of data set after {} ms.",
+                     writer=print):
+        data_set = WordsDataSet("../dataset/words.txt", "../dataset/images", transform=transformation)
+    print("Length:", len(data_set))
+    dataloader = DataLoader(data_set, batch_size=50, shuffle=True, num_workers=4)
