@@ -74,8 +74,13 @@ def Best_Path_Decoder(matrix):
 
 
 class Net(nn.Module):
+<<<<<<< HEAD:code/2DLSTM.py
     def __init__(self, lstm_layers=2, bidirectional=True, dropout=0):
         super(Net, self).__init__()
+=======
+    def __init__(self):
+        super(Net2, self).__init__()
+>>>>>>> 0ff466fd6b1bdf8004a91705c342fc6a0bc23ca2:code/model_PIL.py
 
         self.lstm_layers = lstm_layers
         self.bidirectional = bidirectional
@@ -96,15 +101,26 @@ class Net(nn.Module):
             self.cnn_layers.append(nn.MaxPool2d(kernel_size=pool_kernel_stride[i], stride=pool_kernel_stride[i], padding=0))
 
         # ---LSTM---
+<<<<<<< HEAD:code/2DLSTM.py
         self.lstm = LSTM2d(embed_dim=256, hidden_size=256, num_layers=lstm_layers, batch_first=True, bidirectional=bidirectional, dropout=dropout)
 
         #---last CNN layer---
         self.cnn = nn.Conv2d(in_channels=(bidirectional+1)*(256) , out_channels=80, kernel_size=1, stride=1, padding=0)
+=======
+        self.lstm = nn.LSTM(input_size=256, hidden_size=256, num_layers=2, batch_first=True, bidirectional=True)
+
+        #---last CNN layer---
+        self.cnn = nn.Conv2d(in_channels=512, out_channels=80, kernel_size=1, stride=1, padding=0)
+>>>>>>> 0ff466fd6b1bdf8004a91705c342fc6a0bc23ca2:code/model_PIL.py
 
         self.init_hidden()
 
     def init_hidden(self):
+<<<<<<< HEAD:code/2DLSTM.py
         self.hidden = (nn.Parameter(nn.init.xavier_uniform_(torch.Tensor(self.lstm_layers*(self.bidirectional+1), 50, 256).type(torch.FloatTensor)).to(device), requires_grad=True), nn.Parameter(nn.init.xavier_uniform_(torch.Tensor(self.lstm_layers*(self.bidirectional+1), 50, 256).type(torch.FloatTensor)), requires_grad=True).to(device))
+=======
+        self.hidden = (nn.Parameter(nn.init.xavier_uniform_(torch.Tensor(4, 10, 256).type(torch.FloatTensor)).to(device), requires_grad=True), nn.Parameter(nn.init.xavier_uniform_(torch.Tensor(4, 10, 256).type(torch.FloatTensor)), requires_grad=True).to(device))
+>>>>>>> 0ff466fd6b1bdf8004a91705c342fc6a0bc23ca2:code/model_PIL.py
 
     def forward(self, x):
         # pass through CNN layers
@@ -124,7 +140,7 @@ class Net(nn.Module):
         x = x.squeeze(2)
         x = x.permute(2,0,1)
         return x
-
+    
 def encodeWord(Y):
     new_Y = []
     for w in Y:
