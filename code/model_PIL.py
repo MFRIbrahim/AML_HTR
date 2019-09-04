@@ -73,7 +73,7 @@ def Best_Path_Decoder(matrix):
 
 class Net(nn.Module):
     def __init__(self):
-        super(Net, self).__init__()
+        super(Net2, self).__init__()
 
 
         # ---CNN layers---
@@ -91,18 +91,17 @@ class Net(nn.Module):
             self.cnn_layers.append(nn.BatchNorm2d(num_features=channels[i+1]))
             self.cnn_layers.append(nn.ReLU())
             self.cnn_layers.append(nn.MaxPool2d(kernel_size=pool_kernel_stride[i], stride=pool_kernel_stride[i], padding=0))
-            self.cnn_layers.append(nn.Dropout(0.3))
 
         # ---LSTM---
-        self.lstm = nn.LSTM(input_size=256, hidden_size=256, num_layers=4, batch_first=True, dropout=0.3)
+        self.lstm = nn.LSTM(input_size=256, hidden_size=256, num_layers=2, batch_first=True, bidirectional=True)
 
         #---last CNN layer---
-        self.cnn = nn.Conv2d(in_channels=256, out_channels=80, kernel_size=1, stride=1, padding=0)
+        self.cnn = nn.Conv2d(in_channels=512, out_channels=80, kernel_size=1, stride=1, padding=0)
 
         self.init_hidden()
 
     def init_hidden(self):
-        self.hidden = (nn.Parameter(nn.init.xavier_uniform_(torch.Tensor(4, 50, 256).type(torch.FloatTensor)).to(device), requires_grad=True), nn.Parameter(nn.init.xavier_uniform_(torch.Tensor(4, 50, 256).type(torch.FloatTensor)), requires_grad=True).to(device))
+        self.hidden = (nn.Parameter(nn.init.xavier_uniform_(torch.Tensor(4, 10, 256).type(torch.FloatTensor)).to(device), requires_grad=True), nn.Parameter(nn.init.xavier_uniform_(torch.Tensor(4, 10, 256).type(torch.FloatTensor)), requires_grad=True).to(device))
 
     def forward(self, x):
         # pass through CNN layers
@@ -122,7 +121,7 @@ class Net(nn.Module):
         x = x.squeeze(2)
         x = x.permute(2,0,1)
         return x
-
+    
 def encodeWord(Y):
     new_Y = []
     for w in Y:
