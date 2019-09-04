@@ -1,2 +1,4 @@
 dataset/
 trained_models/
+code/LSTM/
+__pycache__/
