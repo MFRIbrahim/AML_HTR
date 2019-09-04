@@ -72,10 +72,11 @@ def Best_Path_Decoder(matrix):
 
 
 class Net(nn.Module):
-    def __init__(self):
+    def __init__(self, lstm_layers=2, bidirectional=True, dropout=0):
         super(Net, self).__init__()
 
-
+        self.lstm_layers = lstm_layers
+        self.bidirectional = bidirectional
         # ---CNN layers---
         self.cnn_layers = nn.ModuleList()
 
@@ -91,18 +92,17 @@ class Net(nn.Module):
             self.cnn_layers.append(nn.BatchNorm2d(num_features=channels[i+1]))
             self.cnn_layers.append(nn.ReLU())
             self.cnn_layers.append(nn.MaxPool2d(kernel_size=pool_kernel_stride[i], stride=pool_kernel_stride[i], padding=0))
-            self.cnn_layers.append(nn.Dropout(0.3))
 
         # ---LSTM---
-        self.lstm = nn.LSTM(input_size=256, hidden_size=256, num_layers=4, batch_first=True, dropout=0.3)
+        self.lstm = nn.LSTM(input_size=256, hidden_size=256, num_layers=lstm_layers, batch_first=True, bidirectional=bidirectional, dropout=dropout)
 
         #---last CNN layer---
-        self.cnn = nn.Conv2d(in_channels=256, out_channels=80, kernel_size=1, stride=1, padding=0)
+        self.cnn = nn.Conv2d(in_channels=(bidirectional+1)*(256) , out_channels=80, kernel_size=1, stride=1, padding=0)
 
         self.init_hidden()
 
     def init_hidden(self):
-        self.hidden = (nn.Parameter(nn.init.xavier_uniform_(torch.Tensor(4, 50, 256).type(torch.FloatTensor)).to(device), requires_grad=True), nn.Parameter(nn.init.xavier_uniform_(torch.Tensor(4, 50, 256).type(torch.FloatTensor)), requires_grad=True).to(device))
+        self.hidden = (nn.Parameter(nn.init.xavier_uniform_(torch.Tensor(self.lstm_layers*(self.bidirectional+1), 50, 256).type(torch.FloatTensor)).to(device), requires_grad=True), nn.Parameter(nn.init.xavier_uniform_(torch.Tensor(self.lstm_layers*(self.bidirectional+1), 50, 256).type(torch.FloatTensor)), requires_grad=True).to(device))
 
     def forward(self, x):
         # pass through CNN layers
@@ -252,12 +252,11 @@ if __name__=="__main__":
     model_path = "../trained_models/model_tmp.chkpt"
     epoch = 0
     loss = 0
-    retrain_model = False
+    weight_decay = 0
+    retrain_model = True
     warm_start = True
-    model = Net().to(device)
-    if warm_start:
-        model = torch.load(model_path).to(device)
-    n_epochs = 50
+    model = Net(dropout=0.2).to(device)
+    n_epochs = 100
     words_file = "../dataset/words.txt"
     data_dir = "../dataset/images"
     batch_size = 50
@@ -266,9 +265,9 @@ if __name__=="__main__":
     train_ratio = 0.6
     train_set, test_set = data_loader(words_file, data_dir, batch_size, image_size, num_words, train_ratio)
     lr = 0.01
-    optimizer = torch.optim.RMSprop(model.parameters(), lr=lr, weight_decay=0.01)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     if warm_start:
-        checkpoint = torch.load("../trained_models/model_optim.chkpt")
+        checkpoint = torch.load("../trained_models/model_optim_tmp.chkpt")
         model.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         epoch = checkpoint['epoch']
@@ -278,19 +277,21 @@ if __name__=="__main__":
             #shuffle data to prevent cyclic effects
             shuffle(train_set)
             print("Training Epoch "+ str(epoch+1))
-            if epoch >= 50:
+            if epoch >= 10:
                 lr = 0.001
-            if epoch >= 150:
-                lr = 0.0001
+            if epoch >= 500:
+                lr = 0.00005
+
             loss = training(model, optimizer, train_set, learning_rate=lr, verbose=False)
             print("Loss: {}".format(loss))
+            epoch += 1
             if epoch % 10 == 0:
                 torch.save({'epoch': epoch, 'loss': loss, 'model_state_dict': model.state_dict(), 'optimizer_state_dict': optimizer.state_dict()}, "../trained_models/model_optim_tmp.chkpt")
-            epoch += 1
-            optimizer = torch.optim.RMSprop(model.parameters(), lr=lr)
-        torch.save({'epoch': epoch, 'loss': loss, 'model_state_dict': model.state_dict(), 'optimizer_state_dict': optimizer.state_dict()}, "../trained_models/model_optim.chkpt")
+                print("saving progress")
+            optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+        torch.save({'epoch': epoch, 'loss': loss, 'model_state_dict': model.state_dict(), 'optimizer_state_dict': optimizer.state_dict()}, "../trained_models/ADAM_2LSTM.chkpt")
     else:
-        checkpoint = torch.load("../trained_models/model_optim.chkpt")
+        checkpoint = torch.load("../trained_models/model_optim_tmp.chkpt")
         model.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         epoch = checkpoint['epoch']
@@ -300,7 +301,7 @@ if __name__=="__main__":
     correct = 0
     counter = 0
     with torch.no_grad():
-        for (X, Y) in test_set:
+        for batch, (X, Y) in enumerate(test_set):
             model.init_hidden()
             X = X.to(device)
             output = F.softmax(model(X), dim=-1)
@@ -308,21 +309,23 @@ if __name__=="__main__":
             predicted_word = Best_Path_Decoder(output)
             for i in range(len(predicted_word)):
                 counter += 1
-                #print(predicted_word[i])
+                if batch < 1:
+                    print(predicted_word[i])
                 if predicted_word[i] == Y[i]:
                     correct += 1
     print("test accuracy:", correct/counter)
     correct = 0
     counter = 0
     with torch.no_grad():
-        for (X, Y) in train_set:
+        for batch, (X, Y) in enumerate(train_set):
             model.init_hidden()
             X = X.to(device)
             output = F.softmax(model(X), dim=-1)
             output = np.array(output.cpu())
             predicted_word = Best_Path_Decoder(output)
             for i in range(len(predicted_word)):
-                #print(predicted_word[i])
+                if batch < 1:
+                    print(predicted_word[i])
                 counter += 1
                 if predicted_word[i] == Y[i]:
                     correct += 1
