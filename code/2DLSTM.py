@@ -8,6 +8,8 @@ import math
 from random import shuffle
 import random
 import cv2
+from copy import copy
+from LSTM.model.lstm2d import LSTM2d
 
 if torch.cuda.is_available():
     device = 'cuda'
@@ -94,7 +96,7 @@ class Net(nn.Module):
             self.cnn_layers.append(nn.MaxPool2d(kernel_size=pool_kernel_stride[i], stride=pool_kernel_stride[i], padding=0))
 
         # ---LSTM---
-        self.lstm = nn.LSTM(input_size=256, hidden_size=256, num_layers=lstm_layers, batch_first=True, bidirectional=bidirectional, dropout=dropout)
+        self.lstm = LSTM2d(embed_dim=256, hidden_size=256, num_layers=lstm_layers, batch_first=True, bidirectional=bidirectional, dropout=dropout)
 
         #---last CNN layer---
         self.cnn = nn.Conv2d(in_channels=(bidirectional+1)*(256) , out_channels=80, kernel_size=1, stride=1, padding=0)
@@ -159,6 +161,11 @@ def training(model, optimizer, dataloader, learning_rate=0.001, verbose = True):
             target_lengths.append(len(w))
         target_lengths = torch.Tensor(target_lengths).to(device).type(torch.long)
         ctc_target = torch.Tensor(ctc_target).to(device).type(torch.long)
+        if batch_id == 0:
+            cpu_input = np.array(copy(ctc_input).detach().cpu())
+            out = Best_Path_Decoder(cpu_input)
+            for word in out:
+                print(word)
         loss = loss_fct(ctc_input, ctc_target, input_lengths, target_lengths)
         mean_loss += loss.item()
         loss.backward()
@@ -253,15 +260,15 @@ if __name__=="__main__":
     epoch = 0
     loss = 0
     weight_decay = 0
-    retrain_model = True
-    warm_start = True
+    retrain_model = False
+    warm_start = False
     model = Net(dropout=0.2).to(device)
     n_epochs = 100
     words_file = "../dataset/words.txt"
     data_dir = "../dataset/images"
     batch_size = 50
     image_size = (32, 128)
-    num_words = 100000
+    num_words = 1000
     train_ratio = 0.6
     train_set, test_set = data_loader(words_file, data_dir, batch_size, image_size, num_words, train_ratio)
     lr = 0.01
@@ -286,17 +293,16 @@ if __name__=="__main__":
             print("Loss: {}".format(loss))
             epoch += 1
             if epoch % 10 == 0:
-                torch.save({'epoch': epoch, 'loss': loss, 'model_state_dict': model.state_dict(), 'optimizer_state_dict': optimizer.state_dict()}, "../trained_models/model_optim_tmp.chkpt")
+                #torch.save({'epoch': epoch, 'loss': loss, 'model_state_dict': model.state_dict(), 'optimizer_state_dict': optimizer.state_dict()}, "../trained_models/model_optim_tmp.chkpt")
                 print("saving progress")
             optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
-        torch.save({'epoch': epoch, 'loss': loss, 'model_state_dict': model.state_dict(), 'optimizer_state_dict': optimizer.state_dict()}, "../trained_models/ADAM_2LSTM.chkpt")
+        #torch.save({'epoch': epoch, 'loss': loss, 'model_state_dict': model.state_dict(), 'optimizer_state_dict': optimizer.state_dict()}, "../trained_models/ADAM_2LSTM.chkpt")
     else:
         checkpoint = torch.load("../trained_models/model_optim_tmp.chkpt")
         model.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         epoch = checkpoint['epoch']
         loss = checkpoint['loss']
-    model.eval()
     # testing...
     correct = 0
     counter = 0
@@ -304,7 +310,7 @@ if __name__=="__main__":
         for batch, (X, Y) in enumerate(test_set):
             model.init_hidden()
             X = X.to(device)
-            output = F.softmax(model(X), dim=-1)
+            output = F.log_softmax(model(X), dim=-1)
             output = np.array(output.cpu())
             predicted_word = Best_Path_Decoder(output)
             for i in range(len(predicted_word)):
@@ -320,7 +326,7 @@ if __name__=="__main__":
         for batch, (X, Y) in enumerate(train_set):
             model.init_hidden()
             X = X.to(device)
-            output = F.softmax(model(X), dim=-1)
+            output = F.log_softmax(model(X), dim=-1)
             output = np.array(output.cpu())
             predicted_word = Best_Path_Decoder(output)
             for i in range(len(predicted_word)):
