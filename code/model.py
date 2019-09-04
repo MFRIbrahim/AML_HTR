@@ -196,6 +196,7 @@ class WordsDataSet(Dataset):
         self.__words = list()
         self.__root_dir = root_dir
         self.__transform = transform
+        self.__statistics = None
 
         with TimeMeasure(enter_msg="Begin meta data loading.",
                          exit_msg="Finished meta data loading after {} ms.",
@@ -207,6 +208,11 @@ class WordsDataSet(Dataset):
                          exit_msg="Finished health check after {} ms.",
                          writer=print):
             self.__health_check()
+
+        with TimeMeasure(enter_msg="Begin creating statistics.",
+                         exit_msg="Finished creating statistics after {} ms.",
+                         writer=print):
+            self.__create_statistics()
 
     def __process_meta_file(self):
         with open(self.__meta_file, 'r') as fp:
@@ -251,6 +257,33 @@ class WordsDataSet(Dataset):
         print("WordsDataSet - Health Check: {} indices={} not readable.".format(len(to_delete), to_delete))
         self.__save_delete_indices(to_delete)
 
+    def __create_statistics(self):
+        min_length, max_length, summed_length = np.inf, 0, 0
+        min_id, max_id = "", ""
+        min_word, max_word = "", ""
+        for word_meta in self.__words:
+            length = len(word_meta.transcription)
+            if length < min_length:
+                min_length = length
+                min_word = '"' + word_meta.transcription + '"'
+                min_id = word_meta.word_id
+
+            if max_length < length:
+                max_length = length
+                max_word = '"' + word_meta.transcription + '"'
+                max_id = word_meta.word_id
+
+            summed_length += length
+
+        self.__statistics = {"min_length": min_length,
+                             "max_length": max_length,
+                             "avg_length": summed_length/len(self.__words),
+                             "min_id": min_id,
+                             "max_id": max_id,
+                             "min_word": min_word,
+                             "max_word": max_word
+                             }
+
     def __len__(self):
         return len(self.__words)
 
@@ -264,6 +297,10 @@ class WordsDataSet(Dataset):
             sample = self.__transform(sample)
 
         return sample
+
+    @property
+    def statistics(self):
+        return self.__statistics
 
 
 class BoundingBox(object):
@@ -394,7 +431,10 @@ class ToTensor(object):
     def __call__(self, sample):
         image, transcript = sample["image"], sample["transcript"]
         tensor = self.__converter(image)
-        return {"image": tensor, "transcript": transcript}
+        word = [int(INV_CHAR_DICT[letter]) for letter in transcript]
+        word = np.asarray(word)
+
+        return {"image": tensor, "transcript": word}
 
 
 # =====================================================================================================================
@@ -415,8 +455,12 @@ if __name__ == "__main__":
                      writer=print):
         data_set = WordsDataSet("../dataset/words.txt", "../dataset/images", transform=transformation)
     print("Length:", len(data_set))
+    print(data_set.statistics)
+    print(data_set[1])
 
-    with TimeMeasure(enter_msg="Load all batches", writer=print):
-        dataloader = DataLoader(data_set, batch_size=50, shuffle=True, num_workers=4)
-        for i_batch, sample_batched in enumerate(dataloader):
-            print(i_batch, len(sample_batched['image']), len(sample_batched['transcript']))
+    #with TimeMeasure(enter_msg="Load all batches", writer=print):
+    #    dataloader = DataLoader(data_set, batch_size=50, shuffle=True, num_workers=4)
+    #    batch = next(iter(dataloader))
+    #    print(batch)
+    #    for i_batch, sample_batched in enumerate(dataloader):
+    #        print(i_batch, len(sample_batched['image']), len(sample_batched['transcript']))
