@@ -81,7 +81,7 @@ class Net(nn.Module):
         self.cnn_layers = nn.ModuleList()
 
         conv_kernel = [5, 5, 3, 3, 3]
-        channels = [1, 32, 64, 128, 128, 256, 256]
+        channels = [1, 32, 64, 128, 128, 256]
         pool_kernel_stride = [(2,2), (2,2), (2,1), (2,1), (2,1)]
 
         for i in range(len(conv_kernel)):
