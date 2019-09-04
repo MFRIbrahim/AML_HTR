@@ -414,14 +414,16 @@ class GrayScale(object):
 
 
 class Rescale(object):
-    def __init__(self, new_width, new_height):
+    def __init__(self, new_width, new_height, max_word_length):
         self.__new_width = new_width
         self.__new_height = new_height
+        self.__max_word_length = max_word_length
 
     def __call__(self, sample):
         image, transcript = sample["image"], sample["transcript"]
         scaled_image = cv2.resize(image, (self.__new_width, self.__new_height))
-        return {"image": scaled_image, "transcript": transcript}
+        scaled_transcript = (transcript + self.__max_word_length*" ")[:self.__max_word_length]
+        return {"image": scaled_image, "transcript": scaled_transcript}
 
 
 class ToTensor(object):
@@ -432,9 +434,21 @@ class ToTensor(object):
         image, transcript = sample["image"], sample["transcript"]
         tensor = self.__converter(image)
         word = [int(INV_CHAR_DICT[letter]) for letter in transcript]
-        word = np.asarray(word)
 
-        return {"image": tensor, "transcript": word}
+        return tensor, torch.tensor(word)
+
+
+def rstrip(lst, value):
+    for idx, x in enumerate(reversed(lst)):
+        if x != value:
+            if idx:
+                del lst[-idx:]
+            return lst
+    return lst
+
+
+def word_tensor_to_list(tensor):
+    return [rstrip(word, 0) for word in tensor.cpu().tolist()]
 
 
 # =====================================================================================================================
@@ -449,7 +463,7 @@ if __name__ == "__main__":
     #    print("Training Epoch "+ str(epoch+1))
     #    training(model, dataloader)
 
-    transformation = transforms.Compose([GrayScale(), Rescale(32, 128), ToTensor()])
+    transformation = transforms.Compose([GrayScale(), Rescale(32, 128, 32), ToTensor()])
     with TimeMeasure(enter_msg="Begin initialization of data set.",
                      exit_msg="Finished initialization of data set after {} ms.",
                      writer=print):
@@ -458,9 +472,11 @@ if __name__ == "__main__":
     print(data_set.statistics)
     print(data_set[1])
 
-    #with TimeMeasure(enter_msg="Load all batches", writer=print):
-    #    dataloader = DataLoader(data_set, batch_size=50, shuffle=True, num_workers=4)
-    #    batch = next(iter(dataloader))
-    #    print(batch)
+    with TimeMeasure(enter_msg="Load all batches", writer=print):
+        dataloader = DataLoader(data_set, batch_size=50, shuffle=True, num_workers=8)
+
+    X, y = next(iter(dataloader))
+    y = word_tensor_to_list(y)
+
     #    for i_batch, sample_batched in enumerate(dataloader):
     #        print(i_batch, len(sample_batched['image']), len(sample_batched['transcript']))
