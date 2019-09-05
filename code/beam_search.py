@@ -54,7 +54,7 @@ def ctcBeamSearch(mat, classes, lm, beamWidth=25):
 	mat = tp(mat, (1,0,2))
 	batch, maxT, maxC = mat.shape
 	output = []
-	
+
 	for i in range(batch):
 		sub_mat = mat[i]
 
@@ -109,12 +109,12 @@ def ctcBeamSearch(mat, classes, lm, beamWidth=25):
 
 					# add beam at current time-step if needed
 					addBeam(curr, newLabeling)
-					
+
 					# fill in data
 					curr.entries[newLabeling].labeling = newLabeling
 					curr.entries[newLabeling].prNonBlank += prNonBlank
 					curr.entries[newLabeling].prTotal += prNonBlank
-					
+
 					# apply LM
 					applyLM(curr.entries[labeling], curr.entries[newLabeling], classes, lm)
 
@@ -132,5 +132,5 @@ def ctcBeamSearch(mat, classes, lm, beamWidth=25):
 		for l in bestLabeling:
 			res += classes[l]
 		output.append(res.replace("|", ""))
-    
+
 	return output

@@ -1,4 +1,4 @@
 dataset/
 trained_models/
-code/LSTM/
+code/ConvLSTM_pytorch/
 __pycache__/

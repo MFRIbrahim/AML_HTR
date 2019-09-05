@@ -9,11 +9,17 @@ from random import shuffle
 import random
 import cv2
 from copy import copy
+from beam_search import ctcBeamSearch
+from data_augmentation import DataAugmenter
 
 if torch.cuda.is_available():
     device = 'cuda'
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 else:
     device = 'cpu'
+
+torch.manual_seed(0)
 
 
 # Here we use '|' as a symbol the CTC-blank
@@ -179,7 +185,7 @@ def data_loader(words_file, data_dir, batch_size, image_size, num_words, train_r
     #TODO: scale all the inputs to 32x128
     # words_file: absolute path of words.txt
     # data_dir: absolute path of directory that contains the word folders (a01, a02, etc...)
-
+    transform = DataAugmenter()
     dataset = []
 
     with open(words_file) as f:
@@ -224,6 +230,10 @@ def data_loader(words_file, data_dir, batch_size, image_size, num_words, train_r
                 target = torch.tensor(target).float()
                 # append the image and the target, obtained from the corresponding words.txt line, to the X,Y lists
                 X.append(target)
+
+                test_img = np.array(transform(target))
+                cv2.imshow("Augmented Image", test_img)
+                cv2.waitKey(0)
                 y = line_split[-1]
                 Y.append(y)
                 line_counter += 1
@@ -267,7 +277,7 @@ if __name__=="__main__":
     data_dir = "../dataset/images"
     batch_size = 50
     image_size = (32, 128)
-    num_words = 100000
+    num_words = 50
     train_ratio = 0.6
     train_set, test_set = data_loader(words_file, data_dir, batch_size, image_size, num_words, train_ratio)
     lr = 0.01
@@ -297,7 +307,7 @@ if __name__=="__main__":
             optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
         torch.save({'epoch': epoch, 'loss': loss, 'model_state_dict': model.state_dict(), 'optimizer_state_dict': optimizer.state_dict()}, "../trained_models/ADAM_2LSTM.chkpt")
     else:
-        checkpoint = torch.load("../trained_models/model_optim_tmp.chkpt")
+        checkpoint = torch.load("../trained_models/ADAM_2LSTM.chkpt")
         model.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         epoch = checkpoint['epoch']
@@ -309,13 +319,14 @@ if __name__=="__main__":
         for batch, (X, Y) in enumerate(test_set):
             model.init_hidden()
             X = X.to(device)
-            output = F.log_softmax(model(X), dim=-1)
+            output = F.softmax(model(X), dim=-1)
             output = np.array(output.cpu())
-            predicted_word = Best_Path_Decoder(output)
+            #predicted_word = Best_Path_Decoder(output)
+            predicted_word = ctcBeamSearch(output, "".join(CHAR_LIST), None, beamWidth=4)
             for i in range(len(predicted_word)):
                 counter += 1
                 if batch < 1:
-                    #print(predicted_word[i])
+                    print(predicted_word[i])
                     pass
                 if predicted_word[i] == Y[i]:
                     correct += 1
@@ -326,12 +337,13 @@ if __name__=="__main__":
         for batch, (X, Y) in enumerate(train_set):
             model.init_hidden()
             X = X.to(device)
-            output = F.log_softmax(model(X), dim=-1)
+            output = F.softmax(model(X), dim=-1)
             output = np.array(output.cpu())
-            predicted_word = Best_Path_Decoder(output)
+            #predicted_word = Best_Path_Decoder(output)
+            predicted_word = ctcBeamSearch(output, "".join(CHAR_LIST), None, beamWidth=4)
             for i in range(len(predicted_word)):
                 if batch < 1:
-                    #print(predicted_word[i])
+                    print(predicted_word[i])
                     pass
                 counter += 1
                 if predicted_word[i] == Y[i]:
