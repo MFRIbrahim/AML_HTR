@@ -1,3 +1,4 @@
+
 import numpy as np
 import torch
 from torch import nn as nn
@@ -185,7 +186,7 @@ def data_loader(words_file, data_dir, batch_size, image_size, num_words, train_r
     #TODO: scale all the inputs to 32x128
     # words_file: absolute path of words.txt
     # data_dir: absolute path of directory that contains the word folders (a01, a02, etc...)
-    transform = DataAugmenter()
+    transform = DataAugmenter(p_erase=0.1, p_jitter=0.1, p_translate=0.1, p_perspective=0.1)
     dataset = []
 
     with open(words_file) as f:
@@ -225,15 +226,16 @@ def data_loader(words_file, data_dir, batch_size, image_size, num_words, train_r
                     continue
                 counter += 1
                 # create target image of size 32x128 and place resized image into it
-                target = np.ones([ht, wt]) * 255
+                target = np.ones([ht, wt])
                 target[0:new_size[1], 0:new_size[0]] = x
                 target = torch.tensor(target).float()
                 # append the image and the target, obtained from the corresponding words.txt line, to the X,Y lists
                 X.append(target)
 
-                test_img = np.array(transform(target))
-                cv2.imshow("Augmented Image", test_img)
-                cv2.waitKey(0)
+                #uncomment to view sample augmentations
+                #test_img = np.array(transform(target))
+                #cv2.imshow("Augmented Image", test_img)
+                #cv2.waitKey(0)
                 y = line_split[-1]
                 Y.append(y)
                 line_counter += 1
