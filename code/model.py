@@ -10,6 +10,7 @@ import random
 import cv2
 from copy import copy
 from beam_search import ctcBeamSearch
+from data_augmentation import DataAugmenter
 
 if torch.cuda.is_available():
     device = 'cuda'
@@ -184,7 +185,7 @@ def data_loader(words_file, data_dir, batch_size, image_size, num_words, train_r
     #TODO: scale all the inputs to 32x128
     # words_file: absolute path of words.txt
     # data_dir: absolute path of directory that contains the word folders (a01, a02, etc...)
-
+    transform = DataAugmenter()
     dataset = []
 
     with open(words_file) as f:
@@ -229,6 +230,10 @@ def data_loader(words_file, data_dir, batch_size, image_size, num_words, train_r
                 target = torch.tensor(target).float()
                 # append the image and the target, obtained from the corresponding words.txt line, to the X,Y lists
                 X.append(target)
+
+                test_img = np.array(transform(target))
+                cv2.imshow("Augmented Image", test_img)
+                cv2.waitKey(0)
                 y = line_split[-1]
                 Y.append(y)
                 line_counter += 1
@@ -272,7 +277,7 @@ if __name__=="__main__":
     data_dir = "../dataset/images"
     batch_size = 50
     image_size = (32, 128)
-    num_words = 400
+    num_words = 50
     train_ratio = 0.6
     train_set, test_set = data_loader(words_file, data_dir, batch_size, image_size, num_words, train_ratio)
     lr = 0.01
