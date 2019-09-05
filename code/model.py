@@ -111,7 +111,9 @@ class Net(nn.Module):
         for layer in self.cnn_layers:
             x = layer(x)
         # transformation for LSTM
+        print(x.size())
         x = x.squeeze(2)
+        print(x.size())
         x = x.permute(0, 2, 1)
         # pass through LSTM
         x, self.hidden = self.lstm(x, self.hidden)
@@ -136,11 +138,8 @@ def encode_word(Y):
     return new_Y
 
 
-def decode_word(Y):
-    new_Y = []
-    for letter in Y:
-        new_Y.append(CHAR_DICT[letter])
-    return new_Y
+def decode_word(numbers):
+    return [CHAR_DICT[num] for num in numbers]
 
 
 def training(model, optimizer, dataloader, learning_rate=0.001, verbose = True):
@@ -152,7 +151,8 @@ def training(model, optimizer, dataloader, learning_rate=0.001, verbose = True):
         with TimeMeasure(enter_msg="Running batch", writer=print):
             model.init_hidden()
             X = X.to(device)
-            Y = word_tensor_to_list(Y)
+            Y = ["".join(decode_word(w)).strip() for w in word_tensor_to_list(Y)]
+            print(X.size(), len(Y))
             optimizer.zero_grad()
             model_out = model(X)
             ctc_input = F.log_softmax(model_out).to(device)
