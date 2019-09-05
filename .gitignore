@@ -1,3 +1,4 @@
 dataset/
 trained_models/
 code/ConvLSTM_pytorch/
+__pycache__/

@@ -11,6 +11,9 @@ import cv2
 from copy import copy
 from ConvLSTM_pytorch.convlstm import ConvLSTM
 
+torch.manual_seed(0)
+
+
 if torch.cuda.is_available():
     device = 'cuda'
 else:
@@ -74,16 +77,17 @@ def Best_Path_Decoder(matrix):
 
 
 class Net(nn.Module):
-    def __init__(self, lstm_layers=2):
+    def __init__(self, dropout=0.3, lstm_layers=2, time_steps=32):
         super(Net, self).__init__()
 
+        self.time_steps = time_steps
         self.lstm_layers = lstm_layers
         # ---CNN layers---
         self.cnn_layers = nn.ModuleList()
 
         conv_kernel = [5, 5, 3, 3, 3]
         channels = [1, 32, 64, 128, 128, 256]
-        pool_kernel_stride = [(2,2), (2,2), (2,1), (2,1), (2,1)]
+        pool_kernel_stride = [(2,1), (2,1), (2,1), (1,1), (1,1)]
 
         for i in range(len(conv_kernel)):
             if conv_kernel[i] == 5:
@@ -94,9 +98,11 @@ class Net(nn.Module):
             self.cnn_layers.append(nn.ReLU())
             self.cnn_layers.append(nn.MaxPool2d(kernel_size=pool_kernel_stride[i], stride=pool_kernel_stride[i], padding=0))
 
+        self.lstm_input_size = (4,4)
         # ---LSTM---
-        self.lstm = ConvLSTM(input_size=(1,1), input_dim=256, hidden_dim=256, kernel_size=(3,3), num_layers=lstm_layers, batch_first=True)
+        self.lstm = ConvLSTM(input_size=self.lstm_input_size, input_dim=256, hidden_dim=256, kernel_size=(3,3), num_layers=lstm_layers, batch_first=True, dropout=dropout)
 
+        self.post_lstm_pool = nn.MaxPool3d(kernel_size=(1,4,4), stride=(1,4,4), padding=0)
         #---last CNN layer---
         self.cnn = nn.Conv2d(in_channels=(256) , out_channels=80, kernel_size=1, stride=1, padding=0)
 
@@ -107,17 +113,20 @@ class Net(nn.Module):
             x = layer(x)
         # transformation for LSTM
         x = x.permute(0,3,1,2)
-        x = x.unsqueeze(4)
+        if x.shape[1] % self.time_steps != 0:
+            raise(ValueError("width of the CNN output ({}) must be evenly divisible into {} timesteps".format(x.shape[1], self.time_steps)))
+        x = x.reshape((x.shape[0], self.time_steps, x.shape[2], x.shape[3], x.shape[1]//self.time_steps))
         # pass through LSTM
         x, hidden = self.lstm(x)
         x = x[0]
         # transformation for last CNN layer
+        x = x.permute(0,2,1,3,4)
+        x = self.post_lstm_pool(x)
         x = x.squeeze(3)
-        x = x.permute(0,2,3,1)
         # pass through last CNN layer
         x = self.cnn(x)
         # transform for CTC_loss calc and text decoding
-        x = x.squeeze(2)
+        x = x.squeeze(3)
         x = x.permute(2,0,1)
         return x
 
@@ -157,9 +166,11 @@ def training(model, optimizer, dataloader, learning_rate=0.001, verbose = True):
         target_lengths = torch.Tensor(target_lengths).to(device).type(torch.long)
         ctc_target = torch.Tensor(ctc_target).to(device).type(torch.long)
         if batch_id == 0:
-            cpu_input = np.array(copy(ctc_input).detach().cpu())
-            out = Best_Path_Decoder(cpu_input)
-            for word in out:
+            #cpu_input = np.array(copy(ctc_input).detach().cpu())
+            #out = Best_Path_Decoder(cpu_input)
+            #for word in out:
+                #print(word)
+            pass
         loss = loss_fct(ctc_input, ctc_target, input_lengths, target_lengths)
         mean_loss += loss.item()
         loss.backward()
@@ -254,15 +265,15 @@ if __name__=="__main__":
     epoch = 0
     loss = 0
     weight_decay = 0
-    retrain_model = True
+    retrain_model = False
     warm_start = False
     model = Net().to(device)
-    n_epochs = 20
+    n_epochs = 100
     words_file = "../dataset/words.txt"
     data_dir = "../dataset/images"
     batch_size = 50
     image_size = (32, 128)
-    num_words = 10000
+    num_words = 100000
     train_ratio = 0.6
     train_set, test_set = data_loader(words_file, data_dir, batch_size, image_size, num_words, train_ratio)
     lr = 0.01
