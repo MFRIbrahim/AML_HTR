@@ -1,6 +1,6 @@
-#-------------------------------------------------------------------#
-#---From https://github.com/SiddhantKapil/deslant_cursive_images----#
-#-------------------------------------------------------------------#
+#-------------------------------------------------------------------------------#
+#---From https://github.com/githubharald/DeslantImg/ reimplemented in Python3---#
+#-------------------------------------------------------------------------------#
 import cv2
 import numpy as np
 from collections import deque
