@@ -12,6 +12,8 @@ import cv2
 from copy import copy
 from beam_search import ctcBeamSearch
 from data_augmentation import DataAugmenter
+from deslant import deslant_image
+import ctypes
 
 if torch.cuda.is_available():
     device = 'cuda'
@@ -186,7 +188,7 @@ def data_loader(words_file, data_dir, batch_size, image_size, num_words, train_r
     #TODO: scale all the inputs to 32x128
     # words_file: absolute path of words.txt
     # data_dir: absolute path of directory that contains the word folders (a01, a02, etc...)
-    transform = DataAugmenter(p_erase=0.1, p_jitter=0.1, p_translate=0.1, p_perspective=0.1)
+    transform = DataAugmenter(p_erase=0, p_jitter=0, p_translate=0, p_perspective=0)
     dataset = []
 
     with open(words_file) as f:
@@ -233,9 +235,14 @@ def data_loader(words_file, data_dir, batch_size, image_size, num_words, train_r
                 X.append(target)
 
                 #uncomment to view sample augmentations
-                #test_img = np.array(transform(target))
-                #cv2.imshow("Augmented Image", test_img)
-                #cv2.waitKey(0)
+                test_img = np.array(transform(target))
+                cv2.imshow("Augmented Image", test_img)
+                cv2.waitKey(0)
+
+                test_img = deslant_image(test_img)
+                cv2.imshow("Deslanted Image", test_img)
+                cv2.waitKey(0)
+
                 y = line_split[-1]
                 Y.append(y)
                 line_counter += 1

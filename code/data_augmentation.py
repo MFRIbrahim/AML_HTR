@@ -44,7 +44,7 @@ class DataAugmenter(object):
         if numpy.random.rand() > self.p_perspective:
             return img
         pa = torch.Tensor([[0,0], [0,1], [1,0], [1,1]])
-        rand_range = 0.0004
+        rand_range = 0.004
         pb = pa + torch.randn(4,2)*rand_range
 
         img = img.transform(img.size, Image.PERSPECTIVE, self.find_coeffs(pa,pb), Image.BICUBIC, fillcolor=255)
