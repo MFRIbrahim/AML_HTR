@@ -129,6 +129,7 @@ class Trainer(object):
         optimizer = self.__environment.create_optimizer(model, learning_rate)
         model.train(mode=True)
         mean_loss = 0
+        losses = list()
         for (batch_id, (feature_batch, label_batch)) in enumerate(train_loader):
             model.init_hidden(batch_size=feature_batch.size()[0], device=device)
             feature_batch = feature_batch.to(device)
@@ -153,6 +154,7 @@ class Trainer(object):
                     print("{:02d}: '{}'".format(i, word))
 
             loss = loss_fct(ctc_input, ctc_target, input_lengths, target_lengths)
+            losses.append(loss.item())
             mean_loss += loss.item()
             loss.backward()
             optimizer.step()
@@ -169,12 +171,14 @@ class Trainer(object):
         model.load_state_dict(state_dict)
 
 
-def evaluate_model(msg, word_prediction, model, data_loader, device):
+def evaluate_model(msg, de_en_coder, word_prediction, model, data_loader, device):
     correct, counter = 0, 0
 
     with torch.no_grad():
         for batch_idx, (feature_batch, label_batch) in enumerate(data_loader):
             feature_batch = feature_batch.to(device)
+            label_batch = [rstrip(word, 1.0) for word in word_tensor_to_list(label_batch)]
+            label_batch = [de_en_coder.decode_word(word) for word in label_batch]
             model.init_hidden(batch_size=feature_batch.size()[0], device=device)
 
             output = F.softmax(model(feature_batch), dim=-1)

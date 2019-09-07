@@ -2,8 +2,8 @@
   "prediction": {
     "char_list": "| !\"#&'()*+,-./0123456789:;?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
     "word_prediction": {
-      "train": {
-        "name": "Beam"
+      "eval": {
+        "name": "BestPath"
       },
       "debug": {
         "name": "BestPath"
@@ -39,7 +39,7 @@
   },
   "training": {
     "name": "Net_small",
-    "retrain": true,
+    "retrain": false,
     "environment": {
       "epochs": 1,
       "warm_start": false,

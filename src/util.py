@@ -88,4 +88,4 @@ class WordDeEnCoder(object):
         return [np.asarray([self.char_to_idx[letter] for letter in word]) for word in words]
 
     def decode_word(self, encoded_word):
-        return [self.idx_to_char[num] for num in encoded_word]
+        return "".join([self.idx_to_char[num] for num in encoded_word])
