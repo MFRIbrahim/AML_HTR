@@ -1,13 +1,15 @@
+import json
+
 import torch
 from torchvision import transforms
 
-from beam_search import ctcBeamSearch
 from dataset import get_data_loaders
 from model import Net
 from school import TrainingEnvironment, Trainer, evaluate_model
 from transformations import GrayScale, Rescale, ToTensor
 from util import WordDeEnCoder, TimeMeasure
-from word_prediction import BeamDecoder, BestPathDecoder
+from word_prediction import BeamDecoder, BestPathDecoder, SimpleWordDecoder
+from types import SimpleNamespace
 
 
 def get_available_device():
@@ -30,48 +32,119 @@ def dynamic_learning_rate(epoch):
         return 0.00005
 
 
-def main():
+def load_config(path):
+    with open(path, 'r') as fp:
+        return json.load(fp)
+
+
+def get_decoder_by_name(name):
+    if name == "Simple":
+        return lambda params: SimpleWordDecoder(params["char_list"])
+    elif name == "BestPath":
+        return lambda params: BestPathDecoder(params["char_list"])
+    elif name == "Beam":
+        return lambda params: BeamDecoder(params["char_list"])
+    else:
+        raise RuntimeError("Didn't find decoder by name '{}'".format(name))
+
+
+def setup_decoder_from_config(config, category):
+    base_parameters = {"char_list": list(config.char_list)}
+    decoder_config = config.word_prediction[category]
+
+    name = decoder_config["name"]
+    decoder = get_decoder_by_name(name)
+    parameters = decoder_config.get("parameters", {})
+    parameters = {**base_parameters, **parameters}
+
+    return decoder(parameters)
+
+
+def create_transformations_from_config(config, my_locals):
+    result = list()
+    for entry in config.transformations:
+        transform = get_transformation_by_name(entry["name"])
+        parameters = {k: inject(v, my_locals) for k,v in entry.get("parameters", dict()).items()}
+        result.append(transform(parameters))
+    return result
+
+
+def get_transformation_by_name(name):
+    if name == "GrayScale":
+        return lambda params: GrayScale()
+    elif name == "Rescale":
+        return lambda params: Rescale(**params)
+    elif name == "ToTensor":
+        return lambda params: ToTensor(**params)
+    else:
+        raise RuntimeError("Didn't find transformation by name '{}'".format(name))
+
+
+def inject(value, my_locals):
+    if type(value) == str and value.startswith("locals://"):
+        path = value.split("//")[1].split("/")
+        obj = my_locals[path[0]]
+        for i in range(1, len(path)):
+            obj = getattr(obj, path[i])
+        value = obj
+
+    return value
+
+
+def get_model_by_name(name):
+    if name == "Net":
+        return lambda params: Net(params)
+    else:
+        raise RuntimeError("Unknown specified network '{}'".format(name))
+
+
+def main(config_name):
     with TimeMeasure(enter_msg="Setup everything", exit_msg="Setup finished after {} ms."):
         torch.manual_seed(0)
         device = get_available_device()
         print("Active device:", device)
 
-        # Here we use '|' as a symbol the CTC-blank
-        char_list = list("| !\"#&'()*+,-./0123456789:;?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")
-        de_en_coder = WordDeEnCoder(char_list)
-        word_predictor = BeamDecoder(char_list)
-        word_predictor_debug = BestPathDecoder(char_list)
+        config = load_config("../configs/{}.json".format(config_name))
 
-        height = 32
-        width = 128
-        max_word_length = 32
-        transformation = transforms.Compose([GrayScale(),
-                                             Rescale(height, width, max_word_length),
-                                             ToTensor(char_to_int=de_en_coder.char_to_idx)
-                                             ])
-        meta_path = "../dataset/words.txt"
-        images_path = "../dataset/images"
-        relative_train_size = 0.6
-        batch_size = 50
+        prediction_config = SimpleNamespace(**config["prediction"])
+        data_set_config = SimpleNamespace(**config["data_set"])
+        data_loading_config = SimpleNamespace(**config["data_loading"])
+        training_config = SimpleNamespace(**config["training"])
+        environment_config = SimpleNamespace(**training_config.environment)
+        model_config = SimpleNamespace(**config["model"])
 
-        train_loader, test_loader = get_data_loaders(meta_path,
-                                                     images_path,
-                                                     transformation,
-                                                     relative_train_size,
-                                                     batch_size)
+        # in char list we use '|' as a symbol the CTC-blank
+        de_en_coder = WordDeEnCoder(list(prediction_config.char_list))
+        word_predictor = setup_decoder_from_config(prediction_config, "train")
+        word_predictor_debug = setup_decoder_from_config(prediction_config, "debug")
 
-        retrain_model = True
-        model = Net(dropout=0.2).to(device)
-        environment = TrainingEnvironment(max_epochs=10, warm_start=False, optimizer_args={"weight_decay": 0})
+        transformations = create_transformations_from_config(data_loading_config, locals())
 
-        trainer = Trainer("net",
+        train_loader, test_loader = get_data_loaders(meta_path=data_set_config.meta_path,
+                                                     images_path=data_set_config.images_path,
+                                                     transformation=transforms.Compose(transformations),
+                                                     relative_train_size=data_loading_config.train_size,
+                                                     batch_size=data_loading_config.batch_size)
+
+        environment = TrainingEnvironment(max_epochs=environment_config.epochs,
+                                          warm_start=environment_config.warm_start,
+                                          loss_name=environment_config.loss["name"],
+                                          optimizer_name=environment_config.optimizer["name"],
+                                          optimizer_args=environment_config.optimizer["parameters"]
+                                          )
+
+        trainer = Trainer(training_config.name,
                           word_predictor_debug,
                           dynamic_learning_rate=dynamic_learning_rate,
                           environment=environment
                           )
 
+        model = get_model_by_name(model_config.name)(model_config.parameters).to(device)
+
+        evals = [(eval_obj["name"], inject(eval_obj, locals())) for eval_obj in config["evaluation"]]
+
     with TimeMeasure(enter_msg="Get trained model.", exit_msg="Obtained trained model after {} ms."):
-        if retrain_model:
+        if training_config.retrain:
             with TimeMeasure(enter_msg="Begin Training.", exit_msg="Finished complete training after {} ms."):
                 trainer.train(model, train_loader, device=device)
         else:
@@ -79,20 +152,14 @@ def main():
                 trainer.load_latest_model_state_into(model)
 
     with TimeMeasure(enter_msg="Evaluate model:", exit_msg="Evaluation finished after {} ms."):
-        evaluate_model(msg="test accuracy: {:7.4f}",
-                       word_prediction=word_predictor,
-                       model=model,
-                       data_loader=test_loader,
-                       device=device
-                       )
-
-        evaluate_model(msg="train accuracy: {:7.4f}",
-                       word_prediction=word_predictor,
-                       model=model,
-                       data_loader=train_loader,
-                       device=device
-                       )
+        for name, loader in evals:
+            evaluate_model(msg=name + " accuracy: {:7.4f}",
+                           word_prediction=word_predictor,
+                           model=model,
+                           data_loader=loader,
+                           device=device
+                           )
 
 
 if __name__ == "__main__":
-    main()
+    main("config_01")

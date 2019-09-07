@@ -55,4 +55,4 @@ class BeamDecoder(object):
         self.__beam_width = beam_width
 
     def __call__(self, matrix):
-        return ctcBeamSearch(matrix, "".join(self.__char_list), None, beamWidth=beam_width)
+        return ctcBeamSearch(matrix, "".join(self.__char_list), None, beamWidth=self.__beam_width)
