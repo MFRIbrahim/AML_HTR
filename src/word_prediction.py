@@ -9,7 +9,7 @@ class SimpleWordDecoder(object):
     def __call__(self, matrix, join=True):
         # matrix with shape (seq_len, batch_size, num_of_characters) --> (32,50,80)
         char_matrix = np.argmax(matrix, axis=2)
-        row_count, col_count = char_matrix.shape
+        col_count, row_count = char_matrix.shape
 
         words = list()
         for row in range(row_count):
@@ -27,7 +27,7 @@ class BestPathDecoder(SimpleWordDecoder):
 
     def __call__(self, matrix, join=True):
         # matrix with shape (seq_len, batch_size, num_of_characters) --> (32,50,80)
-        output = super()(matrix, join=False)
+        output = super().__call__(matrix, join=False)
 
         # clean the output, i.e. remove multiple letters not seperated by '|' and '|'
         last_letter = "abc"  # invalid label
