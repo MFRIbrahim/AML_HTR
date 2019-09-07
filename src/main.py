@@ -93,7 +93,7 @@ def inject(value, my_locals):
 
 def get_model_by_name(name):
     if name == "Net":
-        return lambda params: Net(params)
+        return lambda params: Net(**params)
     else:
         raise RuntimeError("Unknown specified network '{}'".format(name))
 
