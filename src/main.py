@@ -100,7 +100,7 @@ def get_model_by_name(name):
 
 def main(config_name):
     with TimeMeasure(enter_msg="Setup everything", exit_msg="Setup finished after {} ms."):
-        torch.manual_seed(0)
+        #torch.manual_seed(0)
         device = get_available_device()
         print("Active device:", device)
 
@@ -115,7 +115,7 @@ def main(config_name):
 
         # in char list we use '|' as a symbol the CTC-blank
         de_en_coder = WordDeEnCoder(list(prediction_config.char_list))
-        word_predictor = setup_decoder_from_config(prediction_config, "train")
+        word_predictor = setup_decoder_from_config(prediction_config, "eval")
         word_predictor_debug = setup_decoder_from_config(prediction_config, "debug")
 
         transformations = create_transformations_from_config(data_loading_config, locals())
@@ -141,7 +141,8 @@ def main(config_name):
 
         model = get_model_by_name(model_config.name)(model_config.parameters).to(device)
 
-        evals = [(eval_obj["name"], inject(eval_obj, locals())) for eval_obj in config["evaluation"]]
+        my_locals = locals()
+        evals = [(eval_obj["name"], inject(eval_obj["data_loader"], my_locals)) for eval_obj in config["evaluation"]]
 
     with TimeMeasure(enter_msg="Get trained model.", exit_msg="Obtained trained model after {} ms."):
         if training_config.retrain:
@@ -155,6 +156,7 @@ def main(config_name):
         for name, loader in evals:
             evaluate_model(msg=name + " accuracy: {:7.4f}",
                            word_prediction=word_predictor,
+                           de_en_coder=de_en_coder,
                            model=model,
                            data_loader=loader,
                            device=device

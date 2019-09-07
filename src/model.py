@@ -16,14 +16,12 @@ class Net(nn.Module):
         pool_kernel_stride = [(2, 2), (2, 2), (2, 1), (2, 1), (2, 1)]
 
         for i in range(len(conv_kernel)):
-            if conv_kernel[i] == 5:
-                self.cnn_layers.append(
-                    nn.Conv2d(in_channels=channels[i], out_channels=channels[i + 1], kernel_size=conv_kernel[i],
-                              stride=1, padding=2))
-            else:
-                self.cnn_layers.append(
-                    nn.Conv2d(in_channels=channels[i], out_channels=channels[i + 1], kernel_size=conv_kernel[i],
-                              stride=1, padding=1))
+            padding = 2 if conv_kernel[i] == 5 else 1
+
+            self.cnn_layers.append(
+                nn.Conv2d(in_channels=channels[i], out_channels=channels[i + 1], kernel_size=conv_kernel[i],
+                          stride=1, padding=padding))
+
             self.cnn_layers.append(nn.BatchNorm2d(num_features=channels[i + 1]))
             self.cnn_layers.append(nn.ReLU())
             self.cnn_layers.append(
@@ -65,4 +63,3 @@ class Net(nn.Module):
         x = x.squeeze(2)
         x = x.permute(2, 0, 1)
         return x
-
