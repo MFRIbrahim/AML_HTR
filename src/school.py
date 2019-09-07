@@ -116,6 +116,7 @@ class Trainer(object):
                     self.__save_progress(total_epochs, model, loss)
 
         if last_save < total_epochs:
+            print("final save")
             self.__save_progress(total_epochs, model, loss)
 
     def __load_progress(self):
@@ -148,8 +149,8 @@ class Trainer(object):
             if batch_id == 0:
                 cpu_input = np.array(copy(ctc_input).detach().cpu())
                 out = self.__word_prediction(cpu_input)
-                for word in out:
-                    print(word)
+                for i, word in enumerate(out):
+                    print("{:02d}: '{}'".format(i, word))
 
             loss = loss_fct(ctc_input, ctc_target, input_lengths, target_lengths)
             mean_loss += loss.item()
@@ -174,7 +175,7 @@ def evaluate_model(msg, word_prediction, model, data_loader, device):
     with torch.no_grad():
         for batch_idx, (feature_batch, label_batch) in enumerate(data_loader):
             feature_batch = feature_batch.to(device)
-            model.init_hidden(batch_size=feature_batch.size()[0])
+            model.init_hidden(batch_size=feature_batch.size()[0], device=device)
 
             output = F.softmax(model(feature_batch), dim=-1)
             output = np.array(output.cpu())

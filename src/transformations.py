@@ -14,14 +14,14 @@ class GrayScale(object):
 
 
 class Rescale(object):
-    def __init__(self, new_width, new_height, max_word_length):
-        self.__new_width = new_width
+    def __init__(self, new_height, new_width, max_word_length):
         self.__new_height = new_height
+        self.__new_width = new_width
         self.__max_word_length = max_word_length
 
     def __call__(self, sample):
         image, transcript = sample["image"], sample["transcript"]
-        scaled_image = resize(image, (self.__new_height, self.__new_width))
+        scaled_image = resize(image, (self.__new_width, self.__new_height))
         scaled_transcript = (transcript + self.__max_word_length*" ")[:self.__max_word_length]
         return {"image": scaled_image, "transcript": scaled_transcript}
 
