@@ -1,5 +1,5 @@
 from torchvision import transforms
-from cv2 import cvtColor, COLOR_BGR2GRAY, resize
+from cv2 import cvtColor, COLOR_BGR2GRAY, resize, imshow, waitKey
 from torch import Tensor as TorchTensor
 
 
@@ -21,7 +21,7 @@ class Rescale(object):
 
     def __call__(self, sample):
         image, transcript = sample["image"], sample["transcript"]
-        scaled_image = resize(image, (self.__new_width, self.__new_height))
+        scaled_image = resize(image, (self.__new_height, self.__new_width))
         scaled_transcript = (transcript + self.__max_word_length*" ")[:self.__max_word_length]
         return {"image": scaled_image, "transcript": scaled_transcript}
 
