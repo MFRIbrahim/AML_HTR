@@ -8,11 +8,19 @@ from dataset import get_data_loaders
 from transformations import GrayScale, Rescale, ToTensor, word_tensor_to_list
 from util import TimeMeasure
 from copy import copy
+from beam_search import ctcBeamSearch
+from data_augmentation import DataAugmenter
+from deslant import deslant_image
+import ctypes
 
 if torch.cuda.is_available():
     device = 'cuda'
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 else:
     device = 'cpu'
+
+torch.manual_seed(0)
 
 
 # Here we use '|' as a symbol the CTC-blank
@@ -111,9 +119,7 @@ class Net(nn.Module):
         for layer in self.cnn_layers:
             x = layer(x)
         # transformation for LSTM
-        print(x.size())
         x = x.squeeze(2)
-        print(x.size())
         x = x.permute(0, 2, 1)
         # pass through LSTM
         x, self.hidden = self.lstm(x, self.hidden)
@@ -162,8 +168,8 @@ def training(model, optimizer, dataloader, learning_rate=0.001, verbose = True):
             target_lengths = []
             for w in Y:
                 target_lengths.append(len(w))
-            target_lengths = torch.Tensor(target_lengths).to(device).type(torch.int32)
-            ctc_target = torch.Tensor(ctc_target).to(device).type(torch.int32)
+            target_lengths = torch.Tensor(target_lengths).long().to(device)
+            ctc_target = torch.Tensor(ctc_target).long().to(device)
 
             if batch_id == 0:
                 cpu_input = np.array(copy(ctc_input).detach().cpu())
@@ -182,6 +188,8 @@ def training(model, optimizer, dataloader, learning_rate=0.001, verbose = True):
 
 
 # =====================================================================================================================
+# transform = DataAugmenter(p_erase=0, p_jitter=0, p_translate=0, p_perspective=0)
+# deslant_image
 
 if __name__ == "__main__":
     width = 32
@@ -221,7 +229,6 @@ if __name__ == "__main__":
         loss = checkpoint['loss']
     if retrain_model:
         for k in range(n_epochs):
-            # shuffle data to prevent cyclic effects
             print("Training Epoch " + str(epoch + 1))
             if epoch >= 10:
                 lr = 0.001
@@ -239,7 +246,7 @@ if __name__ == "__main__":
         torch.save({'epoch': epoch, 'loss': loss, 'model_state_dict': model.state_dict(),
                     'optimizer_state_dict': optimizer.state_dict()}, "../trained_models/ADAM_2LSTM.chkpt")
     else:
-        checkpoint = torch.load("../trained_models/model_optim_tmp.chkpt")
+        checkpoint = torch.load("../trained_models/ADAM_2LSTM.chkpt")
         model.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         epoch = checkpoint['epoch']
@@ -251,13 +258,14 @@ if __name__ == "__main__":
         for batch, (X, Y) in enumerate(test_loader):
             model.init_hidden()
             X = X.to(device)
-            output = F.log_softmax(model(X), dim=-1)
+            output = F.softmax(model(X), dim=-1)
             output = np.array(output.cpu())
-            predicted_word = best_path_decoder(output)
+            #predicted_word = best_path_decoder(output)
+            predicted_word = ctcBeamSearch(output, "".join(CHAR_LIST), None, beamWidth=4)
             for i in range(len(predicted_word)):
                 counter += 1
                 if batch < 1:
-                    # print(predicted_word[i])
+                    print(predicted_word[i])
                     pass
                 if predicted_word[i] == Y[i]:
                     correct += 1
@@ -268,12 +276,13 @@ if __name__ == "__main__":
         for batch, (X, Y) in enumerate(train_loader):
             model.init_hidden()
             X = X.to(device)
-            output = F.log_softmax(model(X), dim=-1)
+            output = F.softmax(model(X), dim=-1)
             output = np.array(output.cpu())
-            predicted_word = best_path_decoder(output)
+            #predicted_word = best_path_decoder(output)
+            predicted_word = ctcBeamSearch(output, "".join(CHAR_LIST), None, beamWidth=4)
             for i in range(len(predicted_word)):
                 if batch < 1:
-                    # print(predicted_word[i])
+                    print(predicted_word[i])
                     pass
                 counter += 1
                 if predicted_word[i] == Y[i]:
