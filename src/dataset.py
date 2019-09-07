@@ -5,11 +5,7 @@ import cv2
 import numpy as np
 import os
 
-from util import TimeMeasure
-
-
-def is_file(path):
-    return os.path.exists(path) and os.path.isfile(path)
+from util import TimeMeasure, is_file
 
 
 class WordsDataSet(Dataset):
@@ -70,8 +66,7 @@ class WordsDataSet(Dataset):
         else:
             for idx, word_meta in enumerate(self.__words):
                 try:
-                    path = word_meta.path(self.__root_dir)
-                    cv2.cvtColor(cv2.imread(path), cv2.COLOR_BGR2GRAY)
+                    self[idx]
                 except cv2.error:
                     to_delete.append(idx)
             print("Write corrupted indices to '{}'".format(health_path))
@@ -237,7 +232,7 @@ def get_data_loaders(meta_path, images_path, transformation, relative_train_size
         train_data_set, test_data_set = random_split(data_set, (train_size, test_size))
 
     with TimeMeasure(enter_msg="Init data loader", writer=print):
-        train_loader = DataLoader(train_data_set, batch_size=batch_size, shuffle=True, num_workers=8)
-        test_loader = DataLoader(test_data_set, batch_size=batch_size, shuffle=True, num_workers=8)
+        train_loader = DataLoader(train_data_set, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=True)
+        test_loader = DataLoader(test_data_set, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=True)
 
     return train_loader, test_loader
