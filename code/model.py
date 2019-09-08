@@ -1,18 +1,26 @@
+
 import numpy as np
 import torch
 from torch import nn as nn
 from torch.nn import functional as F
-from torchvision import transforms
-
-from dataset import get_data_loaders
-from transformations import GrayScale, Rescale, ToTensor, word_tensor_to_list
-from util import TimeMeasure
+from PIL import Image as PImage
+import torchvision
+import math
+from random import shuffle
+import random
+import cv2
 from copy import copy
+from beam_search import ctcBeamSearch
+from data_augmentation import DataAugmenter
 
 if torch.cuda.is_available():
     device = 'cuda'
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 else:
     device = 'cpu'
+
+torch.manual_seed(0)
 
 
 # Here we use '|' as a symbol the CTC-blank
@@ -22,8 +30,7 @@ for i in range(len(CHAR_LIST)):
     CHAR_DICT[i] = CHAR_LIST[i]
 INV_CHAR_DICT = {v: k for k, v in CHAR_DICT.items()}
 
-
-def decoder(matrix):
+def Decoder(matrix):
     # matrix with shape (seq_len, batch_size, num_of_characters) --> (32,50,80)
     C = np.argmax(matrix, axis=2)
     output = []
@@ -38,8 +45,7 @@ def decoder(matrix):
         output[i] = "".join(output[i])
     return output
 
-
-def best_path_decoder(matrix):
+def Best_Path_Decoder(matrix):
     # matrix with shape (seq_len, batch_size, num_of_characters) --> (32,50,80)
     C = np.argmax(matrix, axis=2)
     output = []
@@ -74,7 +80,7 @@ def best_path_decoder(matrix):
 
 
 class Net(nn.Module):
-    def __init__(self, lstm_layers=2, bidirectional=True, dropout=0.0):
+    def __init__(self, lstm_layers=2, bidirectional=True, dropout=0):
         super(Net, self).__init__()
 
         self.lstm_layers = lstm_layers
@@ -114,21 +120,20 @@ class Net(nn.Module):
         print(x.size())
         x = x.squeeze(2)
         print(x.size())
-        x = x.permute(0, 2, 1)
+        x = x.permute(0,2,1)
         # pass through LSTM
         x, self.hidden = self.lstm(x, self.hidden)
         # transformation for last CNN layer
         x = x.unsqueeze(2)
-        x = x.permute(0, 3, 2, 1)
+        x = x.permute(0,3,2,1)
         # pass through last CNN layer
         x = self.cnn(x)
         # transform for CTC_loss calc and text decoding
         x = x.squeeze(2)
-        x = x.permute(2, 0, 1)
+        x = x.permute(2,0,1)
         return x
 
-
-def encode_word(Y):
+def encodeWord(Y):
     new_Y = []
     for w in Y:
         out = []
@@ -137,10 +142,11 @@ def encode_word(Y):
         new_Y.append(np.asarray(out))
     return new_Y
 
-
-def decode_word(numbers):
-    return [CHAR_DICT[num] for num in numbers]
-
+def decodeWord(Y):
+    new_Y = []
+    for letter in Y:
+        new_Y.append(CHAR_DICT[letter])
+    return new_Y
 
 def training(model, optimizer, dataloader, learning_rate=0.001, verbose = True):
     loss_fct = nn.CTCLoss().to(device)
@@ -148,60 +154,121 @@ def training(model, optimizer, dataloader, learning_rate=0.001, verbose = True):
     mean_loss = 0
     #iterate over batches
     for (batch_id, (X, Y)) in enumerate(dataloader):
-        with TimeMeasure(enter_msg="Running batch", writer=print):
-            model.init_hidden()
-            X = X.to(device)
-            Y = ["".join(decode_word(w)).strip() for w in word_tensor_to_list(Y)]
-            print(X.size(), len(Y))
-            optimizer.zero_grad()
-            model_out = model(X)
-            ctc_input = F.log_softmax(model_out).to(device)
-            input_lengths = torch.full(size=(len(X),), fill_value=model_out.shape[0], dtype=torch.long).to(device)
-            #TODO: Check axis
-            ctc_target = np.concatenate(Y, axis = 0)
-            target_lengths = []
-            for w in Y:
-                target_lengths.append(len(w))
-            target_lengths = torch.Tensor(target_lengths).to(device).type(torch.int32)
-            ctc_target = torch.Tensor(ctc_target).to(device).type(torch.int32)
-
-            if batch_id == 0:
-                cpu_input = np.array(copy(ctc_input).detach().cpu())
-                out = best_path_decoder(cpu_input)
-                for word in out:
-                    print(word)
-
-            loss = loss_fct(ctc_input, ctc_target, input_lengths, target_lengths)
-            mean_loss += loss.item()
-            loss.backward()
-            optimizer.step()
-            if verbose:
-                print("Processed Batch {}/{}".format(batch_id, len(dataloader)))
-                print("Loss: {}".format(loss))
-    return mean_loss / len(dataloader)
+        model.init_hidden()
+        Y = encodeWord(Y)
+        X = X.to(device)
+        optimizer.zero_grad()
+        model_out = model(X)
+        ctc_input = F.log_softmax(model_out, dim=-1).to(device)
+        input_lengths = torch.full(size=(len(X),), fill_value=model_out.shape[0], dtype=torch.long).to(device)
+        #print(len(X))
+        #TODO: Check axis
+        ctc_target = np.concatenate(Y, axis = 0)
+        target_lengths = []
+        for w in Y:
+            target_lengths.append(len(w))
+        target_lengths = torch.Tensor(target_lengths).to(device).type(torch.long)
+        ctc_target = torch.Tensor(ctc_target).to(device).type(torch.long)
+        if batch_id == 0:
+            cpu_input = np.array(copy(ctc_input).detach().cpu())
+            out = Best_Path_Decoder(cpu_input)
+            for word in out:
+                print(word)
+        loss = loss_fct(ctc_input, ctc_target, input_lengths, target_lengths)
+        mean_loss += loss.item()
+        loss.backward()
+        optimizer.step()
+        if verbose:
+            print("Processed Batch {}/{}".format(batch_id+1, len(dataloader)))
+            print("Loss: {}".format(loss))
+    return mean_loss/len(dataloader)
 
 
-# =====================================================================================================================
+def data_loader(words_file, data_dir, batch_size, image_size, num_words, train_ratio):
+    #TODO: scale all the inputs to 32x128
+    # words_file: absolute path of words.txt
+    # data_dir: absolute path of directory that contains the word folders (a01, a02, etc...)
+    transform = DataAugmenter(p_erase=0.1, p_jitter=0.1, p_translate=0.1, p_perspective=0.1)
+    dataset = []
 
-if __name__ == "__main__":
-    width = 32
-    height = 128
-    max_word_length = 32
-    transformation = transforms.Compose([GrayScale(),
-                                         Rescale(32, 128, 32),
-                                         ToTensor(char_to_int=INV_CHAR_DICT)
-                                         ])
-    meta_path = "../dataset/words.txt"
-    images_path = "../dataset/images"
-    relative_train_size = 0.6
-    batch_size = 50
+    with open(words_file) as f:
+        # line_counter counts the relevant lines to get the desired batch size, counter counts relevant lines, i.e. words
+        line_counter = 0
+        Y = []
+        X = []
+        counter = 0
+        for line in f:
+            if line_counter < batch_size:
+                # skip empty lines and information at the beginning
+                if not line.strip() or line[0] == "#":
+                    continue
+                # construct the image path from the information in the corresponding words.txt lines
+                line_split = line.strip().split(' ')
+                file_name_split = line_split[0].split('-')
+                file_name = '/' + file_name_split[0] + '/' + file_name_split[0] + '-' + file_name_split[1] + '/' + line_split[0] + '.png'
+                # load image, resize to desired image size, convert to greyscale and then to torch tensor
+                try:
+                    img = PImage.open(data_dir + file_name).convert('L')
+                except:
+                    continue
+                if counter >= num_words:
+                    break
+                (ht, wt) = image_size
+                (w, h) = img.size
+                fx = w / wt
+                fy = h / ht
+                f = max(fx, fy)
+                new_size = (max(min(wt, int(w / f)), 1), max(min(ht, int(h / f)), 1))
+                img = img.resize((new_size[0], new_size[1]))
+                converter = torchvision.transforms.ToTensor()
+                x = converter(img)
+                x = torch.squeeze(x)
+                x = np.array(x)
+                if x.ndim != 2:
+                    continue
+                counter += 1
+                # create target image of size 32x128 and place resized image into it
+                target = np.ones([ht, wt])
+                target[0:new_size[1], 0:new_size[0]] = x
+                target = torch.tensor(target).float()
+                # append the image and the target, obtained from the corresponding words.txt line, to the X,Y lists
+                X.append(target)
 
-    train_loader, test_loader = get_data_loaders(meta_path,
-                                                 images_path,
-                                                 transformation,
-                                                 relative_train_size,
-                                                 batch_size)
+                #uncomment to view sample augmentations
+                #test_img = np.array(transform(target))
+                #cv2.imshow("Augmented Image", test_img)
+                #cv2.waitKey(0)
+                y = line_split[-1]
+                Y.append(y)
+                line_counter += 1
+            else:
+                # stack the X list to a tensor and add X,Y to the dataset and reset the lists and line_counter variable
+                X = torch.stack(X)
+                X = torch.unsqueeze(X, 1)
+                data = (X, Y)
+                dataset.append(data)
+                Y = []
+                X = []
+                line_counter = 0
+        # if total number of lines is not divisible by the batch_size, the remaining smaller batch must be added at the end
+        if len(Y) != 0 and len(X) != 0:
+            X = torch.stack(X)
+            X = torch.unsqueeze(X, 1)
+            data = (X,Y)
+            dataset.append(data)
+        # split dataset into train and test set
+        num_of_batches = math.ceil(num_words/batch_size)
+        num_of_train_batches = int(train_ratio*num_of_batches)
+        train_set = dataset[:num_of_train_batches]
+        test_set = dataset[num_of_train_batches:]
+        random.shuffle(train_set)
+        random.shuffle(test_set)
+    return train_set, test_set
 
+
+
+
+if __name__=="__main__":
     model_path = "../trained_models/model_tmp.chkpt"
     epoch = 0
     loss = 0
@@ -209,10 +276,16 @@ if __name__ == "__main__":
     retrain_model = True
     warm_start = False
     model = Net(dropout=0.2).to(device)
-    n_epochs = 10
+    n_epochs = 100
+    words_file = "../dataset/words.txt"
+    data_dir = "../dataset/images"
+    batch_size = 50
+    image_size = (32, 128)
+    num_words = 5000
+    train_ratio = 0.6
+    train_set, test_set = data_loader(words_file, data_dir, batch_size, image_size, num_words, train_ratio)
     lr = 0.01
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
-
     if warm_start:
         checkpoint = torch.load("../trained_models/model_optim_tmp.chkpt")
         model.load_state_dict(checkpoint['model_state_dict'])
@@ -221,25 +294,24 @@ if __name__ == "__main__":
         loss = checkpoint['loss']
     if retrain_model:
         for k in range(n_epochs):
-            # shuffle data to prevent cyclic effects
-            print("Training Epoch " + str(epoch + 1))
+            #shuffle data to prevent cyclic effects
+            shuffle(train_set)
+            print("Training Epoch "+ str(epoch+1))
             if epoch >= 10:
                 lr = 0.001
             if epoch >= 500:
                 lr = 0.00005
 
-            loss = training(model, optimizer, train_loader, learning_rate=lr, verbose=False)
+            loss = training(model, optimizer, train_set, learning_rate=lr, verbose=False)
             print("Loss: {}".format(loss))
             epoch += 1
             if epoch % 10 == 0:
-                torch.save({'epoch': epoch, 'loss': loss, 'model_state_dict': model.state_dict(),
-                            'optimizer_state_dict': optimizer.state_dict()}, "../trained_models/model_optim_tmp.chkpt")
+                torch.save({'epoch': epoch, 'loss': loss, 'model_state_dict': model.state_dict(), 'optimizer_state_dict': optimizer.state_dict()}, "../trained_models/model_optim_tmp.chkpt")
                 print("saving progress")
             optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
-        torch.save({'epoch': epoch, 'loss': loss, 'model_state_dict': model.state_dict(),
-                    'optimizer_state_dict': optimizer.state_dict()}, "../trained_models/ADAM_2LSTM.chkpt")
+        torch.save({'epoch': epoch, 'loss': loss, 'model_state_dict': model.state_dict(), 'optimizer_state_dict': optimizer.state_dict()}, "../trained_models/ADAM_2LSTM.chkpt")
     else:
-        checkpoint = torch.load("../trained_models/model_optim_tmp.chkpt")
+        checkpoint = torch.load("../trained_models/ADAM_2LSTM.chkpt")
         model.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         epoch = checkpoint['epoch']
@@ -248,37 +320,36 @@ if __name__ == "__main__":
     correct = 0
     counter = 0
     with torch.no_grad():
-        for batch, (X, Y) in enumerate(test_loader):
+        for batch, (X, Y) in enumerate(test_set):
             model.init_hidden()
             X = X.to(device)
-            output = F.log_softmax(model(X), dim=-1)
+            output = F.softmax(model(X), dim=-1)
             output = np.array(output.cpu())
-            predicted_word = best_path_decoder(output)
+            #predicted_word = Best_Path_Decoder(output)
+            predicted_word = ctcBeamSearch(output, "".join(CHAR_LIST), None, beamWidth=4)
             for i in range(len(predicted_word)):
                 counter += 1
                 if batch < 1:
-                    # print(predicted_word[i])
+                    print(predicted_word[i])
                     pass
                 if predicted_word[i] == Y[i]:
                     correct += 1
-    print("test accuracy:", correct / counter)
+    print("test accuracy:", correct/counter)
     correct = 0
     counter = 0
     with torch.no_grad():
-        for batch, (X, Y) in enumerate(train_loader):
+        for batch, (X, Y) in enumerate(train_set):
             model.init_hidden()
             X = X.to(device)
-            output = F.log_softmax(model(X), dim=-1)
+            output = F.softmax(model(X), dim=-1)
             output = np.array(output.cpu())
-            predicted_word = best_path_decoder(output)
+            #predicted_word = Best_Path_Decoder(output)
+            predicted_word = ctcBeamSearch(output, "".join(CHAR_LIST), None, beamWidth=4)
             for i in range(len(predicted_word)):
                 if batch < 1:
-                    # print(predicted_word[i])
+                    print(predicted_word[i])
                     pass
                 counter += 1
                 if predicted_word[i] == Y[i]:
                     correct += 1
-    print("train accuracy:", correct / counter)
-
-
-
+    print("train accuracy:", correct/counter)
