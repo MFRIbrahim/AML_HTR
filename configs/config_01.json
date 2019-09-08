@@ -1,0 +1,73 @@
+{
+  "prediction": {
+    "char_list": "| !\"#&'()*+,-./0123456789:;?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
+    "word_prediction": {
+      "eval": {
+        "name": "BestPath"
+      },
+      "debug": {
+        "name": "BestPath"
+      }
+    }
+  },
+  "data_set": {
+    "meta_path": "../dataset/words.txt",
+    "images_path": "../dataset/images"
+  },
+  "data_loading": {
+    "train_size": 0.6,
+    "batch_size": 50,
+    "transformations": [
+      {
+        "name": "GrayScale"
+      },
+      {
+        "name": "Rescale",
+        "parameters": {
+          "new_width": 128,
+          "new_height": 32,
+          "max_word_length": 32
+        }
+      },
+      {
+        "name": "ToTensor",
+        "parameters": {
+          "char_to_int": "locals://de_en_coder/char_to_idx"
+        }
+      }
+    ]
+  },
+  "training": {
+    "name": "Net_small",
+    "retrain": true,
+    "environment": {
+      "epochs": 10,
+      "warm_start": false,
+      "loss": {
+        "name": "CTC"
+      },
+      "optimizer": {
+        "name": "Adam",
+        "parameters": {
+          "weight_decay": 0
+        }
+      }
+    }
+  },
+  "model": {
+    "name": "Net",
+    "parameters": {
+      "dropout": 0.2
+    }
+  },
+  "evaluation": [
+    {
+      "name": "test",
+      "data_loader": "locals://test_loader"
+    },
+    {
+      "name": "train",
+      "data_loader": "locals://train_loader"
+    }
+  ]
+}
