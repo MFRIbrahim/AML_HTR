@@ -39,9 +39,9 @@
   },
   "training": {
     "name": "Net_small",
-    "retrain": false,
+    "retrain": true,
     "environment": {
-      "epochs": 1,
+      "epochs": 10,
       "warm_start": false,
       "loss": {
         "name": "CTC"

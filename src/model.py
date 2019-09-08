@@ -4,7 +4,7 @@ from torch import nn as nn
 
 class Net(nn.Module):
     def __init__(self, lstm_layers=2, bidirectional=True, dropout=0.0):
-        super(Net, self).__init__()
+        super().__init__()
 
         self.lstm_layers = lstm_layers
         self.bidirectional = bidirectional
@@ -18,21 +18,30 @@ class Net(nn.Module):
         for i in range(len(conv_kernel)):
             padding = 2 if conv_kernel[i] == 5 else 1
 
-            self.cnn_layers.append(
-                nn.Conv2d(in_channels=channels[i], out_channels=channels[i + 1], kernel_size=conv_kernel[i],
-                          stride=1, padding=padding))
+            self.cnn_layers.append(nn.Conv2d(in_channels=channels[i],
+                                             out_channels=channels[i + 1],
+                                             kernel_size=conv_kernel[i],
+                                             stride=1, padding=padding))
 
             self.cnn_layers.append(nn.BatchNorm2d(num_features=channels[i + 1]))
             self.cnn_layers.append(nn.ReLU())
-            self.cnn_layers.append(
-                nn.MaxPool2d(kernel_size=pool_kernel_stride[i], stride=pool_kernel_stride[i], padding=0))
+            self.cnn_layers.append(nn.MaxPool2d(kernel_size=pool_kernel_stride[i],
+                                                stride=pool_kernel_stride[i],
+                                                padding=0))
 
         # ---LSTM---
-        self.lstm = nn.LSTM(input_size=256, hidden_size=256, num_layers=lstm_layers, batch_first=True,
-                            bidirectional=bidirectional, dropout=dropout)
+        self.lstm = nn.LSTM(input_size=256,
+                            hidden_size=256,
+                            num_layers=lstm_layers,
+                            batch_first=True,
+                            bidirectional=bidirectional,
+                            dropout=dropout)
 
         # ---last CNN layer---
-        self.cnn = nn.Conv2d(in_channels=(bidirectional + 1) * (256), out_channels=80, kernel_size=1, stride=1,
+        self.cnn = nn.Conv2d(in_channels=(bidirectional + 1) * 256,
+                             out_channels=80,
+                             kernel_size=1,
+                             stride=1,
                              padding=0)
         self.hidden = ()
 
