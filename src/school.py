@@ -107,7 +107,7 @@ class Trainer(object):
             enter_msg = "Train Epoch: {}".format(epoch_idx)
             with TimeMeasure(enter_msg=enter_msg, writer=self.__writer, print_enabled=self.__print_enabled):
                 current_learning_rate = self.__learning_rate_adaptor(total_epochs)
-                loss = self.__core_training(model, train_loader, current_learning_rate, device)
+                loss = self.core_training(model, train_loader, current_learning_rate, device)
                 self.__writer("loss: {}".format(loss))
                 total_epochs += 1
 
@@ -124,16 +124,16 @@ class Trainer(object):
         dictionary = load_latest_checkpoint(directory)
         return dictionary["total_epochs"], dictionary["model_states"], dictionary["loss"]
 
-    def __core_training(self, model, train_loader, learning_rate, device):
+    def core_training(self, model, train_loader, learning_rate, device):
         loss_fct = self.__environment.loss_function.to(device)
         optimizer = self.__environment.create_optimizer(model, learning_rate)
         model.train(mode=True)
         mean_loss = 0
-        losses = list()
+
         for (batch_id, (feature_batch, label_batch)) in enumerate(train_loader):
             model.init_hidden(batch_size=feature_batch.size()[0], device=device)
             feature_batch = feature_batch.to(device)
-            label_batch = [rstrip(word, 1.0) for word in word_tensor_to_list(label_batch)]
+            label_batch = [np.asarray(rstrip(list(map(int, word)), 1)) for word in word_tensor_to_list(label_batch)]
 
             optimizer.zero_grad()
             model_out = model(feature_batch)
@@ -144,21 +144,24 @@ class Trainer(object):
                                        ).to(device)
             ctc_target = np.concatenate(label_batch, axis=0)  # TODO: Check axis
             target_lengths = [len(w) for w in label_batch]
-            target_lengths = torch.Tensor(target_lengths).long().cpu()
-            ctc_target = torch.Tensor(ctc_target).long().to(device)
+            target_lengths = torch.Tensor(target_lengths).to(device).type(torch.long)
+            ctc_target = torch.Tensor(ctc_target).to(device).type(torch.long)
 
             if batch_id == 0:
-                cpu_input = np.array(copy(ctc_input).detach().cpu())
-                out = self.__word_prediction(cpu_input)
-                for i, word in enumerate(out):
-                    print("{:02d}: '{}'".format(i, word))
+                self.__print_words_in_batch(ctc_input)
 
             loss = loss_fct(ctc_input, ctc_target, input_lengths, target_lengths)
-            losses.append(loss.item())
             mean_loss += loss.item()
             loss.backward()
             optimizer.step()
+
         return mean_loss / len(train_loader)
+
+    def __print_words_in_batch(self, ctc_input):
+        cpu_input = np.array(copy(ctc_input).detach().cpu())
+        out = self.__word_prediction(cpu_input)
+        for i, word in enumerate(out):
+            print("{:02d}: '{}'".format(i, word))
 
     def __save_progress(self, total_epochs, model, loss):
         with TimeMeasure(enter_msg="Saving progress...", writer=self.__writer,
