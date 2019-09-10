@@ -28,39 +28,6 @@
         }
       },
       {
-        "name": "ToTensor",
-        "parameters": {
-          "char_to_int": "locals://de_en_coder/char_to_idx"
-        }
-      },
-      {
-      "name": "RandomErasing"
-      },
-      {
-        "name": "TensorToPIL"
-      },
-      {
-      "name": "RandomRotateAndTranslate"
-      },
-      {
-      "name": "RandomJitter"
-      },
-      {
-      "name": "RandomPerspective"
-      },
-      {
-        "name": "ToTensor",
-        "parameters": {
-          "char_to_int": "locals://de_en_coder/char_to_idx"
-        }
-      },
-      {
-        "name": "TensorToNumpy"
-      },
-      {
-      "name": "Deslant"
-      },
-      {
       "name": "Rescale",
       "parameters": {
         "new_width": 128,
