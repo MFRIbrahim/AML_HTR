@@ -8,7 +8,7 @@ import numpy
 
 
 class DataAugmenter(object):
-    def __init__(self, p_erase=0.1, p_jitter=0.1, p_translate=0.1, p_perspective=0.1):
+    def __init__(self, p_erase=0.03, p_jitter=0.5, p_translate=0.1, p_perspective=0.2):
         self.p_perspective = p_perspective
         erasing = torchvision.transforms.RandomErasing(p=p_erase, scale=(0.02, 0.04), ratio=(0.3, 3.3), value=1) #Größe Testen
         toPIL = torchvision.transforms.ToPILImage("L")
@@ -20,8 +20,7 @@ class DataAugmenter(object):
 
     def __call__(self, sample):
         reduce_dim = False
-        reduce_channels = False
-        if sample.ndim == 2:
+        if sample.ndim == 2 or (sample.ndim == 3 and sample.shape[0] != 1):
             reduce_dim = True
             sample = sample.unsqueeze(0)
 
@@ -44,7 +43,7 @@ class DataAugmenter(object):
         if numpy.random.rand() > self.p_perspective:
             return img
         pa = torch.Tensor([[0,0], [0,1], [1,0], [1,1]])
-        rand_range = 0.004
+        rand_range = 0.0004
         pb = pa + torch.randn(4,2)*rand_range
 
         img = img.transform(img.size, Image.PERSPECTIVE, self.find_coeffs(pa,pb), Image.BICUBIC, fillcolor=255)
