@@ -250,7 +250,7 @@ def save_train_test_split(path, train_data_set, test_data_set):
 
 
 def restore_train_test_split(path, data_set):
-    splits = dill.load(open(path, rb))
+    splits = dill.load(open(path, "rb"))
     if type(splits) != list:
         raise ValueError("Unknown datatype for splits: '{}', has to be list".format(type(splits)))
     if len(splits) != 2:

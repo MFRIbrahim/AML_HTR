@@ -21,7 +21,8 @@ def deslant_image(img, bgcolor=255, alphaVals=[-0.3, -0.2, -0.1, -0.05, 0.0, 0.0
     if np.max(img) <= 1:
         img = (img*255).astype(np.uint8)
         TransformToFloat = True
-
+    if img.ndim == 3 and img.shape[0] == 1:
+        img = img[0]
     _, imgBW = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     alphaVals = alphaVals
     sum_alpha = [0]*len(alphaVals)

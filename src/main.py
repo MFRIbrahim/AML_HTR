@@ -7,7 +7,7 @@ from dataset import get_data_loaders
 from model import Net
 from school import TrainingEnvironment, Trainer, evaluate_model
 from statistics import Statistics
-from transformations import GrayScale, Rescale, ToTensor, RandomErasing, RandomJitter, RandomRotateAndTranslate, RandomPerspective, Deslant
+from transformations import GrayScale, Rescale, ToTensor, RandomErasing, RandomJitter, RandomRotateAndTranslate, RandomPerspective, Deslant, TensorToNumpy, TensorToPIL, PadTranscript
 from util import WordDeEnCoder, TimeMeasure
 from word_prediction import BeamDecoder, BestPathDecoder, SimpleWordDecoder
 from types import SimpleNamespace
@@ -89,6 +89,10 @@ def get_transformation_by_name(name):
         return lambda params: RandomPerspective(**params)
     elif name == "Deslant":
         return lambda params: Deslant(**params)
+    elif name == "TensorToNumpy":
+        return lambda params: TensorToNumpy(**params)
+    elif name == "PadTranscript":
+        return lambda params: PadTranscript(**params)
     else:
         raise RuntimeError("Didn't find transformation by name '{}'".format(name))
 
@@ -135,11 +139,20 @@ def main(config_name):
 
         transformations = create_transformations_from_config(data_loading_config, locals())
 
+        restore_path, save_path = None, None
+        if hasattr(data_loading_config, "restore_path"):
+            restore_path = data_loading_config.restore_path
+        if hasattr(data_loading_config, "save_path"):
+            save_path = data_loading_config.save_path
+
+
         train_loader, test_loader = get_data_loaders(meta_path=data_set_config.meta_path,
                                                      images_path=data_set_config.images_path,
                                                      transformation=transforms.Compose(transformations),
                                                      relative_train_size=data_loading_config.train_size,
-                                                     batch_size=data_loading_config.batch_size)
+                                                     batch_size=data_loading_config.batch_size,
+                                                     restore_path=restore_path,
+                                                     save_path=save_path)
 
         environment = TrainingEnvironment(max_epochs=environment_config.epochs,
                                           warm_start=environment_config.warm_start,
@@ -188,4 +201,4 @@ def main(config_name):
 
 
 if __name__ == "__main__":
-    main("config_03")
+    main("config_04")
