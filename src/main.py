@@ -6,6 +6,7 @@ from torchvision import transforms
 from dataset import get_data_loaders
 from model import Net
 from school import TrainingEnvironment, Trainer, evaluate_model
+from statistics import Statistics
 from transformations import GrayScale, Rescale, ToTensor
 from util import WordDeEnCoder, TimeMeasure
 from word_prediction import BeamDecoder, BestPathDecoder, SimpleWordDecoder
@@ -64,7 +65,7 @@ def create_transformations_from_config(config, my_locals):
     result = list()
     for entry in config.transformations:
         transform = get_transformation_by_name(entry["name"])
-        parameters = {k: inject(v, my_locals) for k,v in entry.get("parameters", dict()).items()}
+        parameters = {k: inject(v, my_locals) for k, v in entry.get("parameters", dict()).items()}
         result.append(transform(parameters))
     return result
 
@@ -140,11 +141,27 @@ def main(config_name):
                           dynamic_learning_rate=dynamic_learning_rate,
                           environment=environment
                           )
-
-        # model = get_model_by_name(model_config.name)(model_config.parameters).to(device)
+        stats = Statistics.get_instance(training_config.name)
+        stats.reset()
 
         my_locals = locals()
         evals = [(eval_obj["name"], inject(eval_obj["data_loader"], my_locals)) for eval_obj in config["evaluation"]]
+
+    def run_model_evaluation():
+        with TimeMeasure(enter_msg="Evaluate model:", exit_msg="Evaluation finished after {} ms."):
+            result = dict()
+            for name, loader in evals:
+                acc = evaluate_model(word_prediction=word_predictor,
+                                     de_en_coder=de_en_coder,
+                                     model=model,
+                                     data_loader=loader,
+                                     device=device
+                                     )
+                print(f"{name} accuracy: {acc:7.4f}")
+                result[name] = acc
+        return result
+
+    trainer.model_eval = run_model_evaluation
 
     with TimeMeasure(enter_msg="Get trained model.", exit_msg="Obtained trained model after {} ms."):
         if training_config.retrain:
@@ -154,15 +171,7 @@ def main(config_name):
             with TimeMeasure(enter_msg="Load pre-trained model.", exit_msg="Finished loading after {} ms."):
                 trainer.load_latest_model_state_into(model)
 
-    with TimeMeasure(enter_msg="Evaluate model:", exit_msg="Evaluation finished after {} ms."):
-        for name, loader in evals:
-            evaluate_model(msg=name + " accuracy: {:7.4f}",
-                           word_prediction=word_predictor,
-                           de_en_coder=de_en_coder,
-                           model=model,
-                           data_loader=loader,
-                           device=device
-                           )
+
 
 
 if __name__ == "__main__":
