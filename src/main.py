@@ -166,4 +166,4 @@ def main(config_name):
 
 
 if __name__ == "__main__":
-    main("config_01")
+    main("config_03")
