@@ -77,6 +77,16 @@ def get_transformation_by_name(name):
         return lambda params: Rescale(**params)
     elif name == "ToTensor":
         return lambda params: ToTensor(**params)
+    elif name == "TensorToPIL":
+        return lambda params: TensorToPIL(**params)
+    elif name == "RandomErasing":
+        return lambda params: RandomErasing(**params)
+    elif name == "RandomRotateAndTranslate":
+        return lambda params: RandomRotateAndTranslate(**params)
+    elif name == "RandomJitter":
+        return lambda params: RandomJitter(**params)
+    elif name == "RandomPerspective":
+        return lambda params: RandomPerspective(**params)
     else:
         raise RuntimeError("Didn't find transformation by name '{}'".format(name))
 
