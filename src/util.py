@@ -35,12 +35,17 @@ class TimeMeasure(object):
         self.__start = time.time()
         if self.__print_enabled and self.__enter_msg:
             self.__writer(self.__enter_msg)
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.__print_enabled:
+            self.__writer(self.__exit_msg.format(self.delta))
+
+    @property
+    def delta(self):
         delta = time.time() - self.__start
         delta = int(delta * 1000)
-        if self.__print_enabled:
-            self.__writer(self.__exit_msg.format(delta))
+        return delta
 
 
 def save_checkpoint(path, total_epochs, model, loss, environment):
