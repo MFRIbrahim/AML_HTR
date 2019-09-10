@@ -47,39 +47,43 @@ class TensorToPIL(object):
         self.unsqueezed = False
 
     def __call__(self, sample):
-        if !(type(sample) == torch.Tensor):
-            raise ValueError("Can only transform torch.Tensor to PIL Image, not  '{}'".format(type(sample)))
-        if sample.ndim == 2:
-            sample = sample.unsqueeze(0)
+        image, transcript = sample["image"], sample["transcript"]
+        if !(type(image) == torch.Tensor):
+            raise ValueError("Can only transform torch.Tensor to PIL Image, not  '{}'".format(type(image)))
+        if image.ndim == 2:
+            image = image.unsqueeze(0)
             self.unsqueezed = True
-        return self.__transform(sample)
+        return self.__transform(image), transcript
 
 class RandomErasing(object):
     def __init__(self, p=0.1, scale=(0.02, 0.04), ratio=(0.3, 3.3), value=1):
         self.__transform = transforms.RandomErasing(p=p, scale=scale, ratio=ratio, value=value)
 
     def __call__ (self, sample):
-        if !(type(sample) == torch.Tensor):
-            raise ValueError("Can only perform random erasing torch.Tensor, not  '{}'".format(type(sample)))
-        return self.__transform(sample)
+        image, transcript = sample["image"], sample["transcript"]
+        if !(type(image) == torch.Tensor):
+            raise ValueError("Can only perform random erasing torch.Tensor, not  '{}'".format(type(image)))
+        return self.__transform(image), transcript
 
 class RandomRotateAndTranslate(object):
     def __init__(self, p=0.1, degrees=0, translate=(0.03, 0.03), fillcolor=255):
         self.__transform = transforms.RandomApply([transforms.RandomAffine(degrees=degrees, translate=translate, fillcolor=fillcolor)], p=p)
 
     def __call__(self, sample):
-        if !(type(sample) == PIL.Image.Image):
-            raise ValueError("Can only perform Rotation and Translation on PIL.Image.Image, not  '{}'".format(type(sample)))
-        return self.__transform(sample)
+        image, transcript = sample["image"], sample["transcript"]
+        if !(type(image) == PIL.Image.Image):
+            raise ValueError("Can only perform Rotation and Translation on PIL.Image.Image, not  '{}'".format(type(image)))
+        return self.__transform(image), transcript
 
 class RandomJitter(object):
     def __init__(self, p=0.1):
         self.__transform = transforms.RandomApply([transforms.ColorJitter()], p=p)
 
     def __call__(self, sample)
-        if !(type(sample) == PIL.Image.Image):
-            raise ValueError("Can only perform Jitter on PIL.Image.Image, not  '{}'".format(type(sample)))
-        return self.__transform(sample)
+        image, transcript = sample["image"], sample["transcript"]
+        if !(type(image) == PIL.Image.Image):
+            raise ValueError("Can only perform Jitter on PIL.Image.Image, not  '{}'".format(type(image)))
+        return self.__transform(image), transcript
 
 class RandomPerspective(object):
     def __init__(self, p=0.1, warp_ratio=0.0003, fillcolor=255):
@@ -89,9 +93,10 @@ class RandomPerspective(object):
         self.fillcolor = fillcolor
 
     def __call__(self, sample):
-        if !(type(sample) == PIL.Image.Image):
-            raise ValueError("Can only perform random perspective on PIL.Image.Image, not  '{}'".format(type(sample)))
-        return self.__transform(sample)
+        image, transcript = sample["image"], sample["transcript"]
+        if !(type(image) == PIL.Image.Image):
+            raise ValueError("Can only perform random perspective on PIL.Image.Image, not  '{}'".format(type(image)))
+        return self.__transform(image), transcript
 
     def warp(self, img):
         if np.random.rand() > self.p:
@@ -120,9 +125,10 @@ class Deslant(object):
         self.alphaVals = alphaVals
 
     def __call__(self, sample):
-        if !(type(sample) == np.ndarray):
-            raise ValueError("Can only perform deslanting on np.ndarray, not  '{}'".format(type(sample)))
-        return deslant_image(sample, bgcolor=self.fillcolor, alphaVals=self.alphaVals)
+        image, transcript = sample["image"], sample["transcript"]
+        if !(type(image) == np.ndarray):
+            raise ValueError("Can only perform deslanting on np.ndarray, not  '{}'".format(type(image)))
+        return deslant_image(image, bgcolor=self.fillcolor, alphaVals=self.alphaVals), transcript
 
 def rstrip(lst, value):
     for idx, x in enumerate(reversed(lst)):
