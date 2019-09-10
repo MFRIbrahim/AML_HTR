@@ -208,21 +208,19 @@ def data_loader(words_file, data_dir, batch_size, image_size, num_words, train_r
                 file_name = '/' + file_name_split[0] + '/' + file_name_split[0] + '-' + file_name_split[1] + '/' + line_split[0] + '.png'
                 # load image, resize to desired image size, convert to greyscale and then to torch tensor
                 try:
-                    img = cv2.imread(data_dir + file_name)
+                    img = PImage.open(data_dir + file_name).convert('L')
                 except:
                     continue
                 if counter >= num_words:
                     break
 
                 (ht, wt) = image_size
-                img = np.array(transform(img))
-                img = deslant_image(img)
                 (w, h) = img.size
                 fx = w / wt
                 fy = h / ht
                 f = max(fx, fy)
                 new_size = (max(min(wt, int(w / f)), 1), max(min(ht, int(h / f)), 1))
-                img = cv2.resize(img, (new_size[0], new_size[1]))
+                img = img.resize((new_size[0], new_size[1]))
                 converter = torchvision.transforms.ToTensor()
                 x = converter(img)
                 x = torch.squeeze(x)
@@ -238,6 +236,8 @@ def data_loader(words_file, data_dir, batch_size, image_size, num_words, train_r
 
 
                 cv2.imshow("target image", np.asarray(target))
+                cv2.waitKey(0)
+                cv2.imshow("deslanted image", deslant_image(np.asarray(target)))
                 cv2.waitKey(0)
                 X.append(target)
 
