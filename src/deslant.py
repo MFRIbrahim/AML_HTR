@@ -3,7 +3,6 @@
 #-------------------------------------------------------------------------------#
 import cv2
 import numpy as np
-from collections import deque
 import math
 
 # data structure for internal usage
@@ -17,14 +16,14 @@ class Result:
         return self.sum_alpha >= other.sum_alpha
 
 # deslant image by calculating its slope and then rotating it overcome the effect of that shift
-def deslant_image(img, bgcolor=255):
+def deslant_image(img, bgcolor=255, alphaVals=[-0.3, -0.2, -0.1, -0.05, 0.0, 0.05, 0.1, 0.2, 0.3]):
     TransformToFloat = False
     if np.max(img) <= 1:
         img = (img*255).astype(np.uint8)
         TransformToFloat = True
 
     _, imgBW = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    alphaVals = [ -1.0, -0.75, -0.5, -0.25, 0.0, 0.25, 0.5, 0.75, 1.0 ]
+    alphaVals = alphaVals
     sum_alpha = [0]*len(alphaVals)
 
     results = []
