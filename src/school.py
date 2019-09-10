@@ -194,8 +194,8 @@ class Trainer(object):
         model.load_state_dict(state_dict)
 
 
-def evaluate_model(de_en_coder, word_prediction, model, data_loader, device, mode="Accuracy"):
-    correct, counter, errorrate = 0, 0, 0
+def evaluate_model(de_en_coder, word_prediction, model, data_loader, device):
+    correct, counter, WER, CER = 0, 0, 0, 0
 
     with torch.no_grad():
         for batch_idx, (feature_batch, label_batch) in enumerate(data_loader):
@@ -208,36 +208,27 @@ def evaluate_model(de_en_coder, word_prediction, model, data_loader, device, mod
             output = np.array(output.cpu())
             prediction = word_prediction(output)
 
-            if mode == "WER":
-                for i in range(len(prediction)):
-                    errors = 0
-                    counter += 1
-                    single_words_pred = prediction[i].split(" ")
-                    single_words_target = label_batch[i].split(" ")
-                    #pad array if more or less words have been predicted than acutally existed
-                    if len(single_words_pred) > len(single_words_target):
-                        single_words_target.extend([""]*(len(single_words_pred)- len(single_words_target)))
-                    if len(single_words_pred) < len(single_words_target):
-                        single_words_pred.extend([""]*(len(single_words_target)- len(single_words_pred)))
-                    for j in range(len(single_words_pred)):
-                        if single_words_pred[j] != single_words_target[j]:
-                            errors += 1
-                    errorrate += errors/len(label_batch[i].split(" "))
-                return errorrate / counter
-            elif mode == "CER":
-                for i in range(len(prediction)):
-                    counter += 1
-                    token = prediction[i]
-                    target = label_batch[i]
-                    errorrate += Levenshtein.distance(token, target)/len(target)
-                return errorrate / counter
-            elif mode == "Accuracy":
-                for i in range(len(prediction)):
-                    counter += 1
-                    token = prediction[i]
-                    target = label_batch[i]
-                    if token == target:
-                        correct += 1
-                return correct / counter
-            else:
-                raise RuntimeError("Didn't find evaluation mode by name '{}'".format(name))
+            for i in range(len(prediction)):
+                errors = 0
+                counter += 1
+
+                token = prediction[i]
+                target = label_batch[i]
+
+                CER += Levenshtein.distance(token, target)/len(target)
+                if token == target:
+                    correct += 1
+
+                single_words_pred = prediction[i].split(" ")
+                single_words_target = label_batch[i].split(" ")
+
+                #pad array if more or less words have been predicted than acutally existed
+                if len(single_words_pred) > len(single_words_target):
+                    single_words_target.extend([""]*(len(single_words_pred)- len(single_words_target)))
+                if len(single_words_pred) < len(single_words_target):
+                    single_words_pred.extend([""]*(len(single_words_target)- len(single_words_pred)))
+                for j in range(len(single_words_pred)):
+                    if single_words_pred[j] != single_words_target[j]:
+                        errors += 1
+                WER += errors/len(label_batch[i].split(" "))
+                return {"CER": CER/counter, "WER": WER/counter, "Accuracy": correct/counter}

@@ -163,14 +163,15 @@ def main(config_name):
         with TimeMeasure(enter_msg="Evaluate model:", exit_msg="Evaluation finished after {} ms."):
             result = dict()
             for name, loader in evals:
-                acc = evaluate_model(word_prediction=word_predictor,
+                metrics = evaluate_model(word_prediction=word_predictor,
                                      de_en_coder=de_en_coder,
                                      model=model,
                                      data_loader=loader,
                                      device=device
                                      )
-                print(f"{name} accuracy: {acc:7.4f}")
-                result[name] = acc
+                for k in metrics.keys():
+                    print(f"{name} {k}: {metrics[k]:7.4f}")
+                result[name] = metrics
         return result
 
     trainer.model_eval = run_model_evaluation
