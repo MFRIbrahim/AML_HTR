@@ -1,9 +1,11 @@
 from torch.utils.data import Dataset, DataLoader, random_split
+from torch.utils.data.dataset import Subset
 from json import dump as json_write, load as json_read
 from torch import Tensor as TorchTensor
 import cv2
 import numpy as np
 import os
+import dill
 
 from util import TimeMeasure, is_file
 
@@ -220,7 +222,7 @@ class WordsMetaData(object):
         return WordsMetaData(wid, state, gray_level, box, pos_tag, transcription)
 
 
-def get_data_loaders(meta_path, images_path, transformation, relative_train_size, batch_size):
+def get_data_loaders(meta_path, images_path, transformation, relative_train_size, batch_size, restore_path=None, save_path=None):
     with TimeMeasure(enter_msg="Begin initialization of data set.",
                      exit_msg="Finished initialization of data set after {} ms.",
                      writer=print):
@@ -230,9 +232,29 @@ def get_data_loaders(meta_path, images_path, transformation, relative_train_size
         train_size = int(relative_train_size * len(data_set))
         test_size = len(data_set) - train_size
         train_data_set, test_data_set = random_split(data_set, (train_size, test_size))
+        if restore_path:
+            train_data_set, test_data_set = restore_train_test_split(restore_path, data_set)
+        elif save_path:
+            #only save split if it has changed
+            save_train_test_split(save_path, train_data_set, test_data_set)
+
 
     with TimeMeasure(enter_msg="Init data loader", writer=print):
         train_loader = DataLoader(train_data_set, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=True)
         test_loader = DataLoader(test_data_set, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=True)
 
     return train_loader, test_loader
+
+def save_train_test_split(path, train_data_set, test_data_set):
+        dill.dump([train_data_set.indices, test_data_set.indices], open(path, "wb"))
+
+
+def restore_train_test_split(path, data_set):
+    splits = dill.load(open(path, rb))
+    if type(splits) != list:
+        raise ValueError("Unknown datatype for splits: '{}', has to be list".format(type(splits)))
+    if len(splits) != 2:
+        raise ValueError("Expected splits to have length 2, not '{}'".format(len(splits)))
+    train_data_set = Subset(data_set, splits[0])
+    test_data_set = Subset(data_set, splits[1])
+    return train_data_set, test_data_set
