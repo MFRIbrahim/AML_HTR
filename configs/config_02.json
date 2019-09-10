@@ -41,8 +41,8 @@
     "name": "Net_small",
     "retrain": true,
     "environment": {
-      "epochs": 100,
-      "warm_start": false,
+      "epochs": 400,
+      "warm_start": true,
       "loss": {
         "name": "CTC"
       },

@@ -104,7 +104,7 @@ class Trainer(object):
                 self.__writer("Warm start was not possible!")
 
         for epoch_idx in range(1, self.__environment.max_epochs + 1):
-            enter_msg = "Train Epoch: {}".format(epoch_idx)
+            enter_msg = "Train Epoch: {: 4d} (total: {: 4d})".format(epoch_idx, total_epochs + 1)
             with TimeMeasure(enter_msg=enter_msg, writer=self.__writer, print_enabled=self.__print_enabled):
                 current_learning_rate = self.__learning_rate_adaptor(total_epochs)
                 loss = self.core_training(model, train_loader, current_learning_rate, device)
