@@ -7,7 +7,7 @@ from dataset import get_data_loaders
 from model import Net
 from school import TrainingEnvironment, Trainer, evaluate_model
 from statistics import Statistics
-from transformations import GrayScale, Rescale, ToTensor
+from transformations import GrayScale, Rescale, ToTensor, RandomErasing, RandomJitter, RandomRotateAndTranslate, RandomPerspective, Deslant
 from util import WordDeEnCoder, TimeMeasure
 from word_prediction import BeamDecoder, BestPathDecoder, SimpleWordDecoder
 from types import SimpleNamespace
@@ -87,6 +87,8 @@ def get_transformation_by_name(name):
         return lambda params: RandomJitter(**params)
     elif name == "RandomPerspective":
         return lambda params: RandomPerspective(**params)
+    elif name == "Deslant":
+        return lambda params: Deslant(**params)
     else:
         raise RuntimeError("Didn't find transformation by name '{}'".format(name))
 
