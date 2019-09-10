@@ -29,7 +29,8 @@ class Statistics(object):
         path = os.path.join("statistics", self.__name, "2_period_data.txt")
         make_directories_for_file(path)
         with open(path, "a+", encoding="utf-8") as fp:
-            print(f"{epoch:5d}\t{100*train_acc:9.6f}\t{100*test_acc:9.6f}\t", file=fp)
+            for k in train_acc.keys():
+                print(f"{epoch:5d}\t{100*train_acc[k]:9.6f}\t{100*test_acc[k]:9.6f}\t", file=fp)
 
     @staticmethod
     def get_instance(name):

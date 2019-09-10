@@ -2,3 +2,5 @@ dataset/
 trained_models/
 src/LSTM/
 __pycache__/
+dataset_splits/
+src/statistics/
