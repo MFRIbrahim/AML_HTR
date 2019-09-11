@@ -75,8 +75,9 @@ class TensorToNumpy(object):
         image, transcript = sample[0], sample[1]
         if not (type(image) == torch.Tensor):
             raise ValueError("Can only transform torch.Tensor to Numpy Array, not  '{}'".format(type(image)))
-        return self.toNumpy(image), transcript
-    def toNumpy(self, sample):
+        return self.to_numpy(image), transcript
+
+    def to_numpy(self, sample):
         return np.asarray(sample)
 
 
@@ -149,15 +150,18 @@ class RandomPerspective(object):
 
 
 class Deslant(object):
-    def __init__(self, fillcolor=255, alphaVals=[-0.3, -0.2, -0.1, -0.05, 0.0, 0.05, 0.1, 0.2, 0.3]):
+    def __init__(self, fillcolor=255, alpha_values=(-0.3, -0.2, -0.1, -0.05, 0.0, 0.05, 0.1, 0.2, 0.3)):
         self.fillcolor = fillcolor
-        self.alphaVals = alphaVals
+        self.alpha_values = alpha_values
 
     def __call__(self, sample):
         image, transcript = sample[0], sample[1]
         if not (type(image) == np.ndarray):
-            raise ValueError("Can only perform deslanting on np.ndarray, not  '{}'".format(type(image)))
-        return {"image": deslant_image(image, bgcolor=self.fillcolor, alpha_vals=self.alphaVals), "transcript": transcript}
+            raise ValueError(f"Can only perform deslanting on np.ndarray, not '{type(image)}'")
+        return {"image": deslant_image(image,
+                                       bgcolor=self.fillcolor,
+                                       alpha_vals=self.alpha_values),
+                "transcript": transcript}
 
 
 def rstrip(lst, value):
