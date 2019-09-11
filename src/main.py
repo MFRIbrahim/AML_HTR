@@ -145,7 +145,6 @@ def main(config_name):
         if hasattr(data_loading_config, "save_path"):
             save_path = data_loading_config.save_path
 
-
         train_loader, test_loader = get_data_loaders(meta_path=data_set_config.meta_path,
                                                      images_path=data_set_config.images_path,
                                                      transformation=transforms.Compose(transformations),
@@ -177,11 +176,11 @@ def main(config_name):
             result = dict()
             for name, loader in evals:
                 metrics = evaluate_model(word_prediction=word_predictor,
-                                     de_en_coder=de_en_coder,
-                                     model=model,
-                                     data_loader=loader,
-                                     device=device
-                                     )
+                                         de_en_coder=de_en_coder,
+                                         model=model,
+                                         data_loader=loader,
+                                         device=device
+                                         )
                 for k in metrics.keys():
                     print(f"{name} {k}: {metrics[k]:7.4f}")
                 result[name] = metrics
@@ -196,8 +195,6 @@ def main(config_name):
         else:
             with TimeMeasure(enter_msg="Load pre-trained model.", exit_msg="Finished loading after {} ms."):
                 trainer.load_latest_model_state_into(model)
-
-
 
 
 if __name__ == "__main__":

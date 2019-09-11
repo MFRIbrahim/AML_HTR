@@ -232,18 +232,19 @@ def get_data_loaders(meta_path, images_path, transformation, relative_train_size
         train_size = int(relative_train_size * len(data_set))
         test_size = len(data_set) - train_size
         train_data_set, test_data_set = random_split(data_set, (train_size, test_size))
+
         if restore_path:
             train_data_set, test_data_set = restore_train_test_split(restore_path, data_set)
         elif save_path:
-            #only save split if it has changed
+            # only save split if it has changed
             save_train_test_split(save_path, train_data_set, test_data_set)
-
 
     with TimeMeasure(enter_msg="Init data loader", writer=print):
         train_loader = DataLoader(train_data_set, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=True)
         test_loader = DataLoader(test_data_set, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=True)
 
     return train_loader, test_loader
+
 
 def save_train_test_split(path, train_data_set, test_data_set):
         dill.dump([train_data_set.indices, test_data_set.indices], open(path, "wb"))
