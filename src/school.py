@@ -195,7 +195,8 @@ class Trainer(object):
 
 
 def evaluate_model(de_en_coder, word_prediction, model, data_loader, device):
-    correct, counter, WER, CER = 0, 0, 0, 0
+    # FIXME function to complex
+    correct, counter, WER, CER = 0, 0, 0, 0 # TODO Refactor WER and CER to real names
 
     with torch.no_grad():
         for batch_idx, (feature_batch, label_batch) in enumerate(data_loader):
