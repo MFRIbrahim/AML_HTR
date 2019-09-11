@@ -6,6 +6,7 @@ import PIL
 import numpy as np
 from deslant import deslant_image
 
+
 class GrayScale(object):
     def __init__(self):
         pass
@@ -14,6 +15,7 @@ class GrayScale(object):
         image, transcript = sample["image"], sample["transcript"]
         gray = cvtColor(image, COLOR_BGR2GRAY)
         return {"image": gray, "transcript": transcript}
+
 
 class PadTranscript(object):
     def __init__(self, max_word_length):
@@ -49,6 +51,7 @@ class ToTensor(object):
             word = [self.__char_to_int[letter] for letter in transcript]
         return tensor.float(), TorchTensor(word)
 
+
 class TensorToPIL(object):
     def __init__(self):
         self.__transform = transforms.ToPILImage("L")
@@ -63,6 +66,7 @@ class TensorToPIL(object):
             self.unsqueezed = True
         return self.__transform(image), transcript
 
+
 class TensorToNumpy(object):
     def __init__(self):
         pass
@@ -75,6 +79,7 @@ class TensorToNumpy(object):
     def toNumpy(self, sample):
         return np.asarray(sample)
 
+
 class RandomErasing(object):
     def __init__(self, p=0.1, scale=(0.02, 0.04), ratio=(0.3, 3.3), value=1):
         self.__transform = transforms.RandomErasing(p=p, scale=scale, ratio=ratio, value=value)
@@ -84,6 +89,7 @@ class RandomErasing(object):
         if not (type(image) == torch.Tensor):
             raise ValueError("Can only perform random erasing torch.Tensor, not  '{}'".format(type(image)))
         return self.__transform(image), transcript
+
 
 class RandomRotateAndTranslate(object):
     def __init__(self, p=0.1, degrees=0, translate=(0.03, 0.03), fillcolor=255):
@@ -95,6 +101,7 @@ class RandomRotateAndTranslate(object):
             raise ValueError("Can only perform Rotation and Translation on PIL.Image.Image, not  '{}'".format(type(image)))
         return self.__transform(image), transcript
 
+
 class RandomJitter(object):
     def __init__(self, p=0.1):
         self.__transform = transforms.RandomApply([transforms.ColorJitter()], p=p)
@@ -104,6 +111,7 @@ class RandomJitter(object):
         if not (type(image) == PIL.Image.Image):
             raise ValueError("Can only perform Jitter on PIL.Image.Image, not  '{}'".format(type(image)))
         return self.__transform(image), transcript
+
 
 class RandomPerspective(object):
     def __init__(self, p=0.1, warp_ratio=0.0003, fillcolor=255):
@@ -139,6 +147,7 @@ class RandomPerspective(object):
         res = np.dot(np.linalg.inv(A.T * A) * A.T, B)
         return np.array(res).reshape(8)
 
+
 class Deslant(object):
     def __init__(self, fillcolor=255, alphaVals=[-0.3, -0.2, -0.1, -0.05, 0.0, 0.05, 0.1, 0.2, 0.3]):
         self.fillcolor = fillcolor
@@ -148,7 +157,8 @@ class Deslant(object):
         image, transcript = sample[0], sample[1]
         if not (type(image) == np.ndarray):
             raise ValueError("Can only perform deslanting on np.ndarray, not  '{}'".format(type(image)))
-        return {"image": deslant_image(image, bgcolor=self.fillcolor, alphaVals=self.alphaVals), "transcript": transcript}
+        return {"image": deslant_image(image, bgcolor=self.fillcolor, alpha_vals=self.alphaVals), "transcript": transcript}
+
 
 def rstrip(lst, value):
     for idx, x in enumerate(reversed(lst)):

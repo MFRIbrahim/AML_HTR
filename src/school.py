@@ -222,11 +222,11 @@ def evaluate_model(de_en_coder, word_prediction, model, data_loader, device):
                 single_words_pred = prediction[i].split(" ")
                 single_words_target = label_batch[i].split(" ")
 
-                #pad array if more or less words have been predicted than acutally existed
+                # pad array if more or less words have been predicted than acutally existed
                 if len(single_words_pred) > len(single_words_target):
-                    single_words_target.extend([""]*(len(single_words_pred)- len(single_words_target)))
+                    single_words_target.extend([""]*(len(single_words_pred) - len(single_words_target)))
                 if len(single_words_pred) < len(single_words_target):
-                    single_words_pred.extend([""]*(len(single_words_target)- len(single_words_pred)))
+                    single_words_pred.extend([""]*(len(single_words_target) - len(single_words_pred)))
                 for j in range(len(single_words_pred)):
                     if single_words_pred[j] != single_words_target[j]:
                         errors += 1
