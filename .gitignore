@@ -4,3 +4,4 @@ src/LSTM/
 __pycache__/
 dataset_splits/
 src/statistics/
+dataset_augmented/

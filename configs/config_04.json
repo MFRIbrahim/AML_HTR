@@ -12,7 +12,90 @@
   },
   "data_set": {
     "meta_path": "../dataset/words.txt",
-    "images_path": "../dataset/images"
+    "images_path": "../dataset/images",
+    "augmented_meta_path": "../dataset_augmented/",
+    "augmented_image_path": "../dataset_augmented/images",
+    "permutations": [
+        { "aug1": [
+          {
+            "name": "GrayScale"
+          },
+          {
+            "name": "ToTensor",
+            "parameters": {
+              "char_to_int": "locals://de_en_coder/char_to_idx"
+            }
+          },
+          {
+            "name": "RandomErasing"
+          },
+          {
+            "name": "TensorToPIL"
+          },
+          {
+            "name": "RandomRotateAndTranslate"
+          },
+          {
+            "name": "RandomJitter"
+          },
+          {
+            "name": "RandomPerspective"
+          },
+          {
+            "name": "ToTensor",
+            "parameters": {
+              "char_to_int": "locals://de_en_coder/char_to_idx"
+            }
+          },
+          {
+            "name": "TensorToNumpy"
+          },
+          {
+            "name": "Deslant"
+          }
+        ]
+      },
+      {
+      "aug2": [
+        {
+          "name": "GrayScale"
+        },
+        {
+          "name": "ToTensor",
+          "parameters": {
+            "char_to_int": "locals://de_en_coder/char_to_idx"
+          }
+        },
+        {
+          "name": "RandomErasing"
+        },
+        {
+          "name": "TensorToPIL"
+        },
+        {
+          "name": "RandomRotateAndTranslate"
+        },
+        {
+          "name": "RandomJitter"
+        },
+        {
+          "name": "RandomPerspective"
+        },
+        {
+          "name": "ToTensor",
+          "parameters": {
+            "char_to_int": "locals://de_en_coder/char_to_idx"
+          }
+        },
+        {
+          "name": "TensorToNumpy"
+        },
+        {
+          "name": "Deslant"
+        }
+      ]
+      }
+    ]
   },
   "data_loading": {
     "train_size": 0.6,
@@ -41,8 +124,7 @@
         }
       }
     ],
-    "save_path":"../dataset_splits/split.sav",
-    "restore_path": "../dataset_splits/split.sav"
+    "save_path":"../dataset_splits/split.sav"
   },
   "training": {
     "name": "Net_small_500_epochs-total",

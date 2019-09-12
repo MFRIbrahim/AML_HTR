@@ -11,7 +11,10 @@ from transformations import GrayScale, Rescale, ToTensor, RandomErasing, RandomJ
 from util import WordDeEnCoder, TimeMeasure
 from word_prediction import BeamDecoder, BestPathDecoder, SimpleWordDecoder
 from types import SimpleNamespace
-
+from copy import deepcopy
+import os
+import cv2
+import numpy as np
 
 def get_available_device():
     if torch.cuda.is_available():
@@ -60,13 +63,73 @@ def setup_decoder_from_config(config, category):
 
     return decoder(parameters)
 
+def create_augmented_data_set(transformations, config):
+    #if there are no augmentations to be performed, bail
+    if not hasattr(config, "augmented_meta_path") or not hasattr(config, "augmented_image_path"):
+        return config
+    augmented_meta_path = config.augmented_meta_path
+    if not os.path.exists(augmented_meta_path):
+        os.makedirs(augmented_meta_path)
+    augmented_image_path = config.augmented_image_path
+    if not os.path.exists(augmented_image_path):
+        os.makedirs(augmented_image_path)
+    meta_path = config.meta_path
+    images_path = config.images_path
+    line_count = 0
+    with open(meta_path) as f:
+        with open(os.path.join(augmented_meta_path, meta_path.split('/')[-1]), "w+") as f_new:
+            for line in f:
+                line_count += 1
+                # skip empty lines and information at the beginning
+                if not line.strip() or line[0] == "#":
+                    f_new.write(line)
+                    continue
+                for i, perm in enumerate(transformations):
+                    # construct the image path from the information in the corresponding words.txt lines
+                    line_split = line.strip().split(' ')
+                    file_name_split = line_split[0].split('-')
+                    file_name = '/' + file_name_split[0] + '/' + file_name_split[0] + '-' + file_name_split[1] + '/' + line_split[0] + '.png'
+                    # load image, resize to desired image size, convert to greyscale and then to torch tensor
+                    try:
+                        img = cv2.imread(images_path + file_name)
+                    except Exception as e:
+                        continue
+                    img = transforms.Compose(perm)({"image": img, "transcript": line_split[-1]})["image"]
+                    #create new file name to indicate permutation
+                    new_file_name_split = line_split[0].split('-')
+                    new_line_split = deepcopy(line_split)
+                    new_line_split[0] = new_line_split[0] + "aug" + str(i)
+                    new_file_folder ='/' + new_file_name_split[0] + '/' + new_file_name_split[0] + '-' + new_file_name_split[1] + '/'
+                    new_file_name =  new_file_folder + new_line_split[0] + '.png'
+                    if not os.path.exists(augmented_image_path + new_file_folder):
+                        os.makedirs(augmented_image_path + new_file_folder)
+
+                    new_line_split.append('\n')
+                    new_line = " ".join(new_line_split)
+
+                    cv2.imwrite(augmented_image_path + new_file_name, (img*255).astype(np.uint8))
+                    f_new.write(new_line)
+    config.meta_path = os.path.join(augmented_meta_path, meta_path.split('/')[-1])
+    print(config.meta_path)
+    config.images_path = augmented_image_path
+    return config
+
 
 def create_transformations_from_config(config, my_locals):
     result = list()
-    for entry in config.transformations:
-        transform = get_transformation_by_name(entry["name"])
-        parameters = {k: inject(v, my_locals) for k, v in entry.get("parameters", dict()).items()}
-        result.append(transform(parameters))
+    if hasattr(config, "transformations"):
+        for entry in config.transformations:
+                transform = get_transformation_by_name(entry["name"])
+                parameters = {k: inject(v, my_locals) for k, v in entry.get("parameters", dict()).items()}
+                result.append(transform(parameters))
+    elif hasattr(config, "permutations"):
+        for perm in config.permutations:
+            transformations = list()
+            for entry in list(perm.values())[0]:
+                transform = get_transformation_by_name(entry["name"])
+                parameters = {k: inject(v, my_locals) for k, v in entry.get("parameters", dict()).items()}
+                transformations.append(transform(parameters))
+            result.append(transformations)
     return result
 
 
@@ -139,19 +202,23 @@ def main(config_name):
 
         transformations = create_transformations_from_config(data_loading_config, locals())
 
-        restore_path, save_path = None, None
+        data_augmentations = create_transformations_from_config(data_set_config, locals())
+
+        data_set_config = create_augmented_data_set(data_augmentations, data_set_config)
+
+        split_restore_path, split_save_path = None, None
         if hasattr(data_loading_config, "restore_path"):
-            restore_path = data_loading_config.restore_path
+            split_restore_path = data_loading_config.restore_path
         if hasattr(data_loading_config, "save_path"):
-            save_path = data_loading_config.save_path
+            split_save_path = data_loading_config.save_path
 
         train_loader, test_loader = get_data_loaders(meta_path=data_set_config.meta_path,
                                                      images_path=data_set_config.images_path,
                                                      transformation=transforms.Compose(transformations),
                                                      relative_train_size=data_loading_config.train_size,
                                                      batch_size=data_loading_config.batch_size,
-                                                     restore_path=restore_path,
-                                                     save_path=save_path)
+                                                     restore_path=split_restore_path,
+                                                     save_path=split_save_path)
 
         environment = TrainingEnvironment(max_epochs=environment_config.epochs,
                                           warm_start=environment_config.warm_start,

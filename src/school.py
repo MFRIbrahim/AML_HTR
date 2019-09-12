@@ -144,7 +144,6 @@ class Trainer(object):
             model.init_hidden(batch_size=feature_batch.size()[0], device=device)
             feature_batch = feature_batch.to(device)
             label_batch = [np.asarray(rstrip(list(map(int, word)), 1)) for word in word_tensor_to_list(label_batch)]
-
             optimizer.zero_grad()
             model_out = model(feature_batch)
             ctc_input = F.log_softmax(model_out, dim=-1).to(device)
