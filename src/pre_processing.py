@@ -28,7 +28,7 @@ class DeslantPreprocessor(object):
 
     def __call__(self, meta, img_directory):
         root = os.path.dirname(img_directory)
-        deslant_path = meta.path(os.path.join(root, self.name))
+        deslant_path = meta.path(os.path.join(root, self.name.lower() + "_images"))
 
         if is_file(deslant_path):
             result = cv2.imread(deslant_path)
