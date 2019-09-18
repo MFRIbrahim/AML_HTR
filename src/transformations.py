@@ -5,6 +5,44 @@ import torch
 import PIL
 import numpy as np
 from deslant import deslant_image
+from util import inject
+
+
+def transformation_from_entry(entry, my_locals):
+    if type(entry) == str:
+        transform = get_transformation_by_name(entry)
+        result = transform(dict())
+    else:
+        transform = get_transformation_by_name(entry["name"])
+        parameters = {k: inject(v, my_locals) for k, v in entry.get("parameters", dict()).items()}
+        result = transform(parameters)
+
+    return result
+
+
+def get_transformation_by_name(name):
+    if name == "GrayScale":
+        return lambda params: GrayScale()
+    elif name == "Rescale":
+        return lambda params: Rescale(**params)
+    elif name == "ToTensor":
+        return lambda params: ToTensor(**params)
+    elif name == "TensorToPIL":
+        return lambda params: TensorToPIL(**params)
+    elif name == "RandomErasing":
+        return lambda params: RandomErasing(**params)
+    elif name == "RandomRotateAndTranslate":
+        return lambda params: RandomRotateAndTranslate(**params)
+    elif name == "RandomJitter":
+        return lambda params: RandomJitter(**params)
+    elif name == "RandomPerspective":
+        return lambda params: RandomPerspective(**params)
+    elif name == "TensorToNumpy":
+        return lambda params: TensorToNumpy(**params)
+    elif name == "PadTranscript":
+        return lambda params: PadTranscript(**params)
+    else:
+        raise RuntimeError(f"Didn't find transformation by name '{name}'")
 
 
 class GrayScale(object):
@@ -58,9 +96,9 @@ class TensorToPIL(object):
         self.unsqueezed = False
 
     def __call__(self, sample):
-        image, transcript = sample[0], sample[1]
+        image, transcript = sample
         if not (type(image) == torch.Tensor):
-            raise ValueError("Can only transform torch.Tensor to PIL Image, not  '{}'".format(type(image)))
+            raise ValueError(f"Can only transform torch.Tensor to PIL Image, not  '{type(image)}'")
         if image.ndim == 2:
             image = image.unsqueeze(0)
             self.unsqueezed = True
@@ -72,9 +110,9 @@ class TensorToNumpy(object):
         pass
 
     def __call__(self, sample):
-        image, transcript = sample[0], sample[1]
+        image, transcript = sample
         if not (type(image) == torch.Tensor):
-            raise ValueError("Can only transform torch.Tensor to Numpy Array, not  '{}'".format(type(image)))
+            raise ValueError(f"Can only transform torch.Tensor to Numpy Array, not  '{type(image)}'")
         return self.to_numpy(image), transcript
 
     def to_numpy(self, sample):
@@ -86,9 +124,9 @@ class RandomErasing(object):
         self.__transform = transforms.RandomErasing(p=p, scale=scale, ratio=ratio, value=value)
 
     def __call__ (self, sample):
-        image, transcript = sample[0], sample[1]
+        image, transcript = sample
         if not (type(image) == torch.Tensor):
-            raise ValueError("Can only perform random erasing torch.Tensor, not  '{}'".format(type(image)))
+            raise ValueError(f"Can only perform random erasing torch.Tensor, not  '{type(image)}'")
         return self.__transform(image), transcript
 
 
@@ -97,9 +135,9 @@ class RandomRotateAndTranslate(object):
         self.__transform = transforms.RandomApply([transforms.RandomAffine(degrees=degrees, translate=translate, fillcolor=fillcolor)], p=p)
 
     def __call__(self, sample):
-        image, transcript = sample[0], sample[1]
+        image, transcript = sample
         if not (type(image) == PIL.Image.Image):
-            raise ValueError("Can only perform Rotation and Translation on PIL.Image.Image, not  '{}'".format(type(image)))
+            raise ValueError(f"Can only perform Rotation and Translation on PIL.Image.Image, not  '{type(image)}'")
         return self.__transform(image), transcript
 
 
@@ -108,63 +146,53 @@ class RandomJitter(object):
         self.__transform = transforms.RandomApply([transforms.ColorJitter()], p=p)
 
     def __call__(self, sample):
-        image, transcript = sample[0], sample[1]
+        image, transcript = sample
         if not (type(image) == PIL.Image.Image):
-            raise ValueError("Can only perform Jitter on PIL.Image.Image, not  '{}'".format(type(image)))
+            raise ValueError(f"Can only perform Jitter on PIL.Image.Image, not  '{type(image)}'")
         return self.__transform(image), transcript
 
 
 class RandomPerspective(object):
     def __init__(self, p=0.1, warp_ratio=0.0003, fillcolor=255):
-        self.__transform = transforms.Lambda(self.warp)
+        self.__transform = transforms.Lambda(self.__warp)
         self.p = p
         self.warp_ratio = warp_ratio
         self.fillcolor = fillcolor
 
     def __call__(self, sample):
-        image, transcript = sample[0], sample[1]
+        image, transcript = sample
         if not (type(image) == PIL.Image.Image):
             raise ValueError("Can only perform random perspective on PIL.Image.Image, not  '{}'".format(type(image)))
         return {"image": self.__transform(image), "transcript": transcript}
 
-    def warp(self, img):
+    def __warp(self, img):
         if np.random.rand() > self.p:
             return img
         pa = torch.Tensor([[0,0], [0,1], [1,0], [1,1]])
-        pb = pa + torch.randn(4,2)*self.warp_ratio
+        pb = pa + torch.randn(4, 2) * self.warp_ratio
 
-        img = img.transform(img.size, PIL.Image.PERSPECTIVE, self.find_coeffs(pa,pb), PIL.Image.BICUBIC, fillcolor=self.fillcolor)
+        img = img.transform(img.size,
+                            PIL.Image.PERSPECTIVE,
+                            self.__find_coefficients(pa, pb),
+                            PIL.Image.BICUBIC,
+                            fillcolor=self.fillcolor)
         return img
 
-    def find_coeffs(self, pa, pb):
+    @staticmethod
+    def __find_coefficients(pa, pb):
         matrix = []
         for p1, p2 in zip(pa, pb):
             matrix.append([p1[0], p1[1], 1, 0, 0, 0, -p2[0]*p1[0], -p2[0]*p1[1]])
             matrix.append([0, 0, 0, p1[0], p1[1], 1, -p2[1]*p1[0], -p2[1]*p1[1]])
 
-        A = np.matrix(matrix, dtype=np.float)
+        A = np.array(matrix, dtype=np.float)
         B = np.array(pb).reshape(8)
 
         res = np.dot(np.linalg.inv(A.T * A) * A.T, B)
         return np.array(res).reshape(8)
 
 
-class Deslant(object):
-    def __init__(self, fillcolor=255, alpha_values=(-0.3, -0.2, -0.1, -0.05, 0.0, 0.05, 0.1, 0.2, 0.3)):
-        self.fillcolor = fillcolor
-        self.alpha_values = alpha_values
-
-    def __call__(self, sample):
-        image, transcript = sample[0], sample[1]
-        if not (type(image) == np.ndarray):
-            raise ValueError(f"Can only perform deslanting on np.ndarray, not '{type(image)}'")
-        return {"image": deslant_image(image,
-                                       bgcolor=self.fillcolor,
-                                       alpha_vals=self.alpha_values),
-                "transcript": transcript}
-
-
-def rstrip(lst, value):
+def right_strip(lst, value):
     for idx, x in enumerate(reversed(lst)):
         if x != value:
             if idx:
@@ -174,4 +202,4 @@ def rstrip(lst, value):
 
 
 def word_tensor_to_list(tensor):
-    return [rstrip(word, 0) for word in tensor.cpu().tolist()]
+    return [right_strip(word, 0) for word in tensor.cpu().tolist()]

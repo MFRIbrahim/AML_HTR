@@ -2,6 +2,17 @@ import numpy as np
 from beam_search import ctcBeamSearch
 
 
+def get_decoder_by_name(name):
+    if name == "Simple":
+        return lambda params: SimpleWordDecoder(params["char_list"])
+    elif name == "BestPath":
+        return lambda params: BestPathDecoder(params["char_list"])
+    elif name == "Beam":
+        return lambda params: BeamDecoder(params["char_list"])
+    else:
+        raise RuntimeError(f"Didn't find decoder by name '{name}'")
+
+
 class SimpleWordDecoder(object):
     def __init__(self, idx_to_char):
         self.__idx_to_char = idx_to_char

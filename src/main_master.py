@@ -17,13 +17,13 @@ from beam_search import ctcBeamSearch
 from data_augmentation import DataAugmenter
 from dataset import get_data_loaders
 from deslant import deslant_image
-from main import load_config, inject, setup_decoder_from_config, create_transformations_from_config, \
+from main import load_config, inject, setup_decoder_from_config, build_transformations, \
     get_available_device, get_model_by_name
 from model import Net
 
 # Here we use '|' as a symbol the CTC-blank
 from school import Trainer, TrainingEnvironment, evaluate_model
-from transformations import GrayScale, ToTensor, Rescale, word_tensor_to_list, rstrip
+from transformations import GrayScale, ToTensor, Rescale, word_tensor_to_list, right_strip
 from util import TimeMeasure, WordDeEnCoder
 
 CHAR_LIST = list("| !\"#&'()*+,-./0123456789:;?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")
@@ -124,7 +124,7 @@ if __name__ == "__main__":
     # model = Net(dropout=0.2).to(device)
     model = get_model_by_name(model_config.name)(model_config.parameters).to(device)
 
-    transformations = create_transformations_from_config(data_loading_config, locals())
+    transformations = build_transformations(data_loading_config, locals())
     train_loader, test_loader = get_data_loaders(meta_path=data_set_config.meta_path,
                                                  images_path=data_set_config.images_path,
                                                  transformation=transforms.Compose(transformations),

@@ -1,4 +1,5 @@
 import time
+from collections import Mapping
 from glob import glob
 from os import makedirs
 from os.path import dirname
@@ -94,3 +95,33 @@ class WordDeEnCoder(object):
 
     def decode_word(self, encoded_word):
         return "".join([self.idx_to_char[num] for num in encoded_word])
+
+
+def inject(value, my_locals):
+    if type(value) == str and value.startswith("locals://"):
+        path = value.split("//")[1].split("/")
+        obj = my_locals[path[0]]
+        for i in range(1, len(path)):
+            obj = getattr(obj, path[i])
+        value = obj
+
+    return value
+
+
+class FrozenDict(Mapping):
+
+    def __init__(self, *args, **kwargs):
+        self._d = dict(*args, **kwargs)
+        self._hash = None
+
+    def __iter__(self):
+        return iter(self._d)
+
+    def __len__(self):
+        return len(self._d)
+
+    def __getitem__(self, key):
+        return self._d[key]
+
+    def __hash__(self):
+        return hash(tuple(sorted(self._d.items())))
