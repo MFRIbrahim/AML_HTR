@@ -39,7 +39,8 @@
         }
       }
     ],
-    "save_path": "../dataset_splits/split.sav"
+    "save_path": "../dataset_splits/Standard_Net-small_500.sav",
+    "restore_path": "../dataset_splits/Standard_Net-small_500.sav"
   },
   "training": {
     "name": "Standard_Net-small_500",

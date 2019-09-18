@@ -71,7 +71,7 @@ def build_augmentations(augmentations, my_locals):
 
 def main(config_name):
     logger.info(f"Run with config '{config_name}'.")
-    with TimeMeasure(enter_msg="Setup everything", exit_msg="Setup finished after {} ms.", writer=logger.debug):
+    with TimeMeasure(enter_msg="Setup everything", exit_msg="Setup finished after {}.", writer=logger.debug):
         torch.manual_seed(0)
         device = get_available_device()
         logger.info(f"Active device: {device}")
@@ -123,7 +123,7 @@ def main(config_name):
 
     def run_model_evaluation():
         with TimeMeasure(enter_msg="Evaluate model:",
-                         exit_msg="Evaluation finished after {} ms.",
+                         exit_msg="Evaluation finished after {}.",
                          writer=logger.debug):
             result = dict()
             for name, loader in evals:
@@ -141,16 +141,16 @@ def main(config_name):
     trainer.model_eval = run_model_evaluation
 
     with TimeMeasure(enter_msg="Get trained model.",
-                     exit_msg="Obtained trained model after {} ms.",
+                     exit_msg="Obtained trained model after {}.",
                      writer=logger.debug):
         if training_config.retrain:
             with TimeMeasure(enter_msg="Begin Training.",
-                             exit_msg="Finished complete training after {} ms.",
+                             exit_msg="Finished complete training after {}.",
                              writer=logger.debug):
                 trainer.train(model, train_loader, device=device)
         else:
             with TimeMeasure(enter_msg="Load pre-trained model.",
-                             exit_msg="Finished loading after {} ms.",
+                             exit_msg="Finished loading after {}.",
                              writer=logger.debug):
                 trainer.load_latest_model_state_into(model)
 
@@ -158,5 +158,5 @@ def main(config_name):
 if __name__ == "__main__":
     logger = get_htr_logger(__name__)
     logger.info("=" * 35 + " START " + "=" * 35)
-    main("config_01")
+    main("config_04")
     logger.info("=" * 35 + " END " + "=" * 35)

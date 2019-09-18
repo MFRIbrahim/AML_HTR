@@ -60,7 +60,8 @@
         ]
       }
     ],
-    "save_path": "../dataset_splits/split.sav"
+    "save_path": "../dataset_splits/Standard_Net-small_500_augmentations.sav",
+    "restore_path": "../dataset_splits/Standard_Net-small_500_augmentations.sav"
   },
   "training": {
     "name": "Standard_Net-small_500_augmentations",
