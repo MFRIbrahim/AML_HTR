@@ -13,108 +13,26 @@
   "data_set": {
     "meta_path": "../dataset/words.txt",
     "images_path": "../dataset/images",
-    "augmented_meta_path": "../dataset_augmented/",
-    "augmented_image_path": "../dataset_augmented/images",
-    "permutations": [
-        { "aug1": [
-          {
-            "name": "GrayScale"
-          },
-          {
-            "name": "ToTensor",
-            "parameters": {
-              "char_to_int": "locals://de_en_coder/char_to_idx"
-            }
-          },
-          {
-            "name": "RandomErasing"
-          },
-          {
-            "name": "TensorToPIL"
-          },
-          {
-            "name": "RandomRotateAndTranslate"
-          },
-          {
-            "name": "RandomJitter"
-          },
-          {
-            "name": "RandomPerspective"
-          },
-          {
-            "name": "ToTensor",
-            "parameters": {
-              "char_to_int": "locals://de_en_coder/char_to_idx"
-            }
-          },
-          {
-            "name": "TensorToNumpy"
-          },
-          {
-            "name": "Deslant"
-          }
-        ]
-      },
-      {
-      "aug2": [
-        {
-          "name": "GrayScale"
-        },
-        {
-          "name": "ToTensor",
-          "parameters": {
-            "char_to_int": "locals://de_en_coder/char_to_idx"
-          }
-        },
-        {
-          "name": "RandomErasing"
-        },
-        {
-          "name": "TensorToPIL"
-        },
-        {
-          "name": "RandomRotateAndTranslate"
-        },
-        {
-          "name": "RandomJitter"
-        },
-        {
-          "name": "RandomPerspective"
-        },
-        {
-          "name": "ToTensor",
-          "parameters": {
-            "char_to_int": "locals://de_en_coder/char_to_idx"
-          }
-        },
-        {
-          "name": "TensorToNumpy"
-        },
-        {
-          "name": "Deslant"
-        }
-      ]
-      }
-    ]
+    "pre_processor": {
+      "name": "Deslant"
+    }
   },
   "data_loading": {
     "train_size": 0.6,
     "batch_size": 50,
     "transformations": [
+      "GrayScale",
       {
-        "name": "GrayScale"
-      },
-      {
-      "name": "PadTranscript",
-      "parameters": {
+        "name": "PadTranscript",
+        "parameters": {
           "max_word_length": 32
         }
       },
       {
-      "name": "Rescale",
-      "parameters": {
-        "new_width": 128,
-        "new_height": 32
+        "name": "Rescale",
+        "parameters": {
+          "new_width": 128,
+          "new_height": 32
         }
       },
       {
@@ -124,7 +42,28 @@
         }
       }
     ],
-    "save_path":"../dataset_splits/split.sav"
+    "augmentations": [
+      {
+        "pre": "TensorToPIL",
+        "transformations": [
+          "RandomRotateAndTranslate",
+          "RandomJitter",
+          "RandomPerspective"
+        ],
+        "post": {
+          "name": "ToTensor",
+          "parameters": {
+            "char_to_int": "locals://de_en_coder/char_to_idx"
+          }
+        }
+      },
+      {
+        "transformations": [
+          "RandomErasing"
+        ]
+      }
+    ],
+    "save_path": "../dataset_splits/split.sav"
   },
   "training": {
     "name": "Net_small_500_epochs-total",

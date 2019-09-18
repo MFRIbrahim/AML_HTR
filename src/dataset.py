@@ -7,18 +7,25 @@ import numpy as np
 import os
 import dill
 
-from util import TimeMeasure, is_file
+from deslant import deslant_image
+from util import TimeMeasure, is_file, make_directories_for_file, FrozenDict
 
 
 class WordsDataSet(Dataset):
-    __health_state = "health_state.json"
+    __health_state = "health_state{}.json"
 
-    def __init__(self, meta_file, root_dir, transform=None):
+    def __init__(self, meta_file, root_dir, transform=None, pre_processor=None):
         self.__meta_file = meta_file
         self.__words = list()
         self.__root_dir = root_dir
         self.__transform = transform
         self.__statistics = None
+        self.__pre_processor = pre_processor
+
+        if self.__pre_processor is None:
+            print("No pre-processor selected.")
+        else:
+            print(f"Selected pre-processor: {pre_processor.name}")
 
         with TimeMeasure(enter_msg="Begin meta data loading.",
                          exit_msg="Finished meta data loading after {} ms.",
@@ -61,7 +68,12 @@ class WordsDataSet(Dataset):
 
     def __health_check(self):
         to_delete = list()
-        health_path = os.path.join(self.__root_dir, WordsDataSet.__health_state)
+        if self.__pre_processor is None:
+            health_state = WordsDataSet.__health_state.format("")
+        else:
+            health_state = WordsDataSet.__health_state.format(f"_{self.__pre_processor.name}")
+
+        health_path = os.path.join(self.__root_dir, health_state)
         if is_file(health_path):
             with open(health_path, 'r') as fp:
                 to_delete = json_read(fp)
@@ -69,7 +81,7 @@ class WordsDataSet(Dataset):
             for idx, word_meta in enumerate(self.__words):
                 try:
                     self[idx]
-                except cv2.error:
+                except (cv2.error, ValueError):
                     to_delete.append(idx)
             print("Write corrupted indices to '{}'".format(health_path))
             with open(health_path, 'w') as fp:
@@ -98,7 +110,7 @@ class WordsDataSet(Dataset):
 
         self.__statistics = {"min_length": min_length,
                              "max_length": max_length,
-                             "avg_length": summed_length/len(self.__words),
+                             "avg_length": summed_length / len(self.__words),
                              "min_id": min_id,
                              "max_id": max_id,
                              "min_word": min_word,
@@ -112,8 +124,13 @@ class WordsDataSet(Dataset):
         if type(idx) == TorchTensor:
             idx = idx.item()
         meta = self.__words[idx]
-        path = meta.path(self.__root_dir)
-        image = cv2.imread(path)
+
+        if self.__pre_processor is None:
+            path = meta.path(self.__root_dir)
+            image = cv2.imread(path)
+        else:
+            image = self.__pre_processor(meta, self.__root_dir)
+
         sample = {"image": image, "transcript": meta.transcription}
 
         if self.__transform is not None:
@@ -222,40 +239,53 @@ class WordsMetaData(object):
         return WordsMetaData(wid, state, gray_level, box, pos_tag, transcription)
 
 
-def get_data_loaders(meta_path, images_path, transformation, relative_train_size, batch_size, restore_path=None, save_path=None):
+def get_data_loaders(meta_path, images_path, transformation, augmentation, data_loading_config, pre_processor=None):
+    relative_train_size = data_loading_config.train_size
+    batch_size = data_loading_config.batch_size
+    restore_path = data_loading_config.get("restore_path", default=None)
+    save_path = data_loading_config.get("save_path", default=None)
+
     with TimeMeasure(enter_msg="Begin initialization of data set.",
                      exit_msg="Finished initialization of data set after {} ms.",
                      writer=print):
-        data_set = WordsDataSet(meta_path, images_path, transform=transformation)
+        data_set = WordsDataSet(meta_path, images_path, transform=transformation, pre_processor=pre_processor)
 
     with TimeMeasure(enter_msg="Splitting data set", writer=print):
-        train_size = int(relative_train_size * len(data_set))
-        test_size = len(data_set) - train_size
-        train_data_set, test_data_set = random_split(data_set, (train_size, test_size))
+        if restore_path is not None and os.path.exists(restore_path):
+            loaded = True
+            train_data_set, test_data_set = __restore_train_test_split(restore_path, data_set)
+        else:
+            loaded = False
+            train_size = int(relative_train_size * len(data_set))
+            test_size = len(data_set) - train_size
+            train_data_set, test_data_set = random_split(data_set, (train_size, test_size))
 
-        if restore_path:
-            train_data_set, test_data_set = restore_train_test_split(restore_path, data_set)
-        elif save_path:
-            # only save split if it has changed
-            save_train_test_split(save_path, train_data_set, test_data_set)
+    if not loaded:
+        __save_train_test_split(save_path, train_data_set, test_data_set)
 
     with TimeMeasure(enter_msg="Init data loader", writer=print):
-        train_loader = DataLoader(train_data_set, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=True)
-        test_loader = DataLoader(test_data_set, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=True)
+        train_loader = DataLoader(train_data_set, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=False)
+        test_loader = DataLoader(test_data_set, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=False)
 
     return train_loader, test_loader
 
 
-def save_train_test_split(path, train_data_set, test_data_set):
-        dill.dump([train_data_set.indices, test_data_set.indices], open(path, "wb"))
+def __save_train_test_split(path, train_data_set, test_data_set):
+    make_directories_for_file(path)
+    with open(path, "wb") as fp:
+        dill.dump([train_data_set.indices, test_data_set.indices], fp)
 
 
-def restore_train_test_split(path, data_set):
-    splits = dill.load(open(path, "rb"))
+def __restore_train_test_split(path, data_set):
+    with open(path, "rb") as fp:
+        splits = dill.load(fp)
+
     if type(splits) != list:
-        raise ValueError("Unknown datatype for splits: '{}', has to be list".format(type(splits)))
+        raise ValueError(f"Unknown datatype for splits: '{type(splits)}', has to be list")
     if len(splits) != 2:
-        raise ValueError("Expected splits to have length 2, not '{}'".format(len(splits)))
+        raise ValueError(f"Expected splits to have length 2, not '{len(splits)}'")
+
     train_data_set = Subset(data_set, splits[0])
     test_data_set = Subset(data_set, splits[1])
     return train_data_set, test_data_set
+

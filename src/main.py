@@ -3,18 +3,20 @@ import json
 import torch
 from torchvision import transforms
 
+from config import Configuration
 from dataset import get_data_loaders
-from model import Net
+from model import get_model_by_name
+from pre_processing import pre_processor
 from school import TrainingEnvironment, Trainer, evaluate_model
 from statistics import Statistics
-from transformations import GrayScale, Rescale, ToTensor, RandomErasing, RandomJitter, RandomRotateAndTranslate, RandomPerspective, Deslant, TensorToNumpy, TensorToPIL, PadTranscript
-from util import WordDeEnCoder, TimeMeasure
-from word_prediction import BeamDecoder, BestPathDecoder, SimpleWordDecoder
-from types import SimpleNamespace
+from transformations import get_transformation_by_name, transformation_from_entry
+from util import WordDeEnCoder, TimeMeasure, inject
+from word_prediction import get_decoder_by_name
 from copy import deepcopy
 import os
 import cv2
 import numpy as np
+
 
 def get_available_device():
     if torch.cuda.is_available():
@@ -36,146 +38,24 @@ def dynamic_learning_rate(epoch):
         return 0.00005
 
 
-def load_config(path):
-    with open(path, 'r') as fp:
-        return json.load(fp)
-
-
-def get_decoder_by_name(name):
-    if name == "Simple":
-        return lambda params: SimpleWordDecoder(params["char_list"])
-    elif name == "BestPath":
-        return lambda params: BestPathDecoder(params["char_list"])
-    elif name == "Beam":
-        return lambda params: BeamDecoder(params["char_list"])
-    else:
-        raise RuntimeError("Didn't find decoder by name '{}'".format(name))
-
-
 def setup_decoder_from_config(config, category):
     base_parameters = {"char_list": list(config.char_list)}
-    decoder_config = config.word_prediction[category]
+    decoder_config = config[f"word_prediction/{category}"]
 
-    name = decoder_config["name"]
+    name = decoder_config.name
     decoder = get_decoder_by_name(name)
-    parameters = decoder_config.get("parameters", {})
+    parameters = decoder_config.get("parameters", default={})
     parameters = {**base_parameters, **parameters}
 
     return decoder(parameters)
 
-def create_augmented_data_set(transformations, config):
-    #if there are no augmentations to be performed, bail
-    if not hasattr(config, "augmented_meta_path") or not hasattr(config, "augmented_image_path"):
-        return config
-    augmented_meta_path = config.augmented_meta_path
-    if not os.path.exists(augmented_meta_path):
-        os.makedirs(augmented_meta_path)
-    augmented_image_path = config.augmented_image_path
-    if not os.path.exists(augmented_image_path):
-        os.makedirs(augmented_image_path)
-    meta_path = config.meta_path
-    images_path = config.images_path
-    line_count = 0
-    with open(meta_path) as f:
-        with open(os.path.join(augmented_meta_path, meta_path.split('/')[-1]), "w+") as f_new:
-            for line in f:
-                line_count += 1
-                # skip empty lines and information at the beginning
-                if not line.strip() or line[0] == "#":
-                    f_new.write(line)
-                    continue
-                for i, perm in enumerate(transformations):
-                    # construct the image path from the information in the corresponding words.txt lines
-                    line_split = line.strip().split(' ')
-                    file_name_split = line_split[0].split('-')
-                    file_name = '/' + file_name_split[0] + '/' + file_name_split[0] + '-' + file_name_split[1] + '/' + line_split[0] + '.png'
-                    # load image, resize to desired image size, convert to greyscale and then to torch tensor
-                    try:
-                        img = cv2.imread(images_path + file_name)
-                    except Exception as e:
-                        continue
-                    img = transforms.Compose(perm)({"image": img, "transcript": line_split[-1]})["image"]
-                    #create new file name to indicate permutation
-                    new_file_name_split = line_split[0].split('-')
-                    new_line_split = deepcopy(line_split)
-                    new_line_split[0] = new_line_split[0] + "aug" + str(i)
-                    new_file_folder ='/' + new_file_name_split[0] + '/' + new_file_name_split[0] + '-' + new_file_name_split[1] + '/'
-                    new_file_name =  new_file_folder + new_line_split[0] + '.png'
-                    if not os.path.exists(augmented_image_path + new_file_folder):
-                        os.makedirs(augmented_image_path + new_file_folder)
 
-                    new_line_split.append('\n')
-                    new_line = " ".join(new_line_split)
-
-                    cv2.imwrite(augmented_image_path + new_file_name, (img*255).astype(np.uint8))
-                    f_new.write(new_line)
-    config.meta_path = os.path.join(augmented_meta_path, meta_path.split('/')[-1])
-    print(config.meta_path)
-    config.images_path = augmented_image_path
-    return config
+def build_transformations(transformations, my_locals):
+    return [transformation_from_entry(entry, my_locals) for entry in transformations]
 
 
-def create_transformations_from_config(config, my_locals):
-    result = list()
-    if hasattr(config, "transformations"):
-        for entry in config.transformations:
-                transform = get_transformation_by_name(entry["name"])
-                parameters = {k: inject(v, my_locals) for k, v in entry.get("parameters", dict()).items()}
-                result.append(transform(parameters))
-    elif hasattr(config, "permutations"):
-        for perm in config.permutations:
-            transformations = list()
-            for entry in list(perm.values())[0]:
-                transform = get_transformation_by_name(entry["name"])
-                parameters = {k: inject(v, my_locals) for k, v in entry.get("parameters", dict()).items()}
-                transformations.append(transform(parameters))
-            result.append(transformations)
-    return result
-
-
-def get_transformation_by_name(name):
-    if name == "GrayScale":
-        return lambda params: GrayScale()
-    elif name == "Rescale":
-        return lambda params: Rescale(**params)
-    elif name == "ToTensor":
-        return lambda params: ToTensor(**params)
-    elif name == "TensorToPIL":
-        return lambda params: TensorToPIL(**params)
-    elif name == "RandomErasing":
-        return lambda params: RandomErasing(**params)
-    elif name == "RandomRotateAndTranslate":
-        return lambda params: RandomRotateAndTranslate(**params)
-    elif name == "RandomJitter":
-        return lambda params: RandomJitter(**params)
-    elif name == "RandomPerspective":
-        return lambda params: RandomPerspective(**params)
-    elif name == "Deslant":
-        return lambda params: Deslant(**params)
-    elif name == "TensorToNumpy":
-        return lambda params: TensorToNumpy(**params)
-    elif name == "PadTranscript":
-        return lambda params: PadTranscript(**params)
-    else:
-        raise RuntimeError("Didn't find transformation by name '{}'".format(name))
-
-
-def inject(value, my_locals):
-    if type(value) == str and value.startswith("locals://"):
-        path = value.split("//")[1].split("/")
-        obj = my_locals[path[0]]
-        for i in range(1, len(path)):
-            obj = getattr(obj, path[i])
-        value = obj
-
-    return value
-
-
-def get_model_by_name(name):
-    if name == "Net":
-        return lambda params: Net(**params)
-    else:
-        raise RuntimeError("Unknown specified network '{}'".format(name))
+def build_augmentations(augmentations, my_locals):
+    pass
 
 
 def main(config_name):
@@ -184,14 +64,14 @@ def main(config_name):
         device = get_available_device()
         print("Active device:", device)
 
-        config = load_config("../configs/{}.json".format(config_name))
+        config = Configuration(f"../configs/{config_name}.json")
 
-        prediction_config = SimpleNamespace(**config["prediction"])
-        data_set_config = SimpleNamespace(**config["data_set"])
-        data_loading_config = SimpleNamespace(**config["data_loading"])
-        training_config = SimpleNamespace(**config["training"])
-        environment_config = SimpleNamespace(**training_config.environment)
-        model_config = SimpleNamespace(**config["model"])
+        prediction_config = config["prediction"]
+        data_set_config = config["data_set"]
+        data_loading_config = config["data_loading"]
+        training_config = config["training"]
+        environment_config = config["training/environment"]
+        model_config = config["model"]
 
         # in char list we use '|' as a symbol the CTC-blank
         de_en_coder = WordDeEnCoder(list(prediction_config.char_list))
@@ -200,32 +80,22 @@ def main(config_name):
 
         model = get_model_by_name(model_config.name)(model_config.parameters).to(device)
 
-        transformations = create_transformations_from_config(data_loading_config, locals())
-
-        data_augmentations = create_transformations_from_config(data_set_config, locals())
-
-        data_set_config = create_augmented_data_set(data_augmentations, data_set_config)
-
-        split_restore_path, split_save_path = None, None
-        if hasattr(data_loading_config, "restore_path"):
-            split_restore_path = data_loading_config.restore_path
-        if hasattr(data_loading_config, "save_path"):
-            split_save_path = data_loading_config.save_path
+        main_locals = locals()
+        transformations = build_transformations(data_loading_config.transformations, main_locals)
+        augmentations = data_loading_config.if_exists(
+            path="augmentations",
+            runner=lambda augms: build_augmentations(augms, main_locals),
+            default=list()
+        )
 
         train_loader, test_loader = get_data_loaders(meta_path=data_set_config.meta_path,
                                                      images_path=data_set_config.images_path,
                                                      transformation=transforms.Compose(transformations),
-                                                     relative_train_size=data_loading_config.train_size,
-                                                     batch_size=data_loading_config.batch_size,
-                                                     restore_path=split_restore_path,
-                                                     save_path=split_save_path)
+                                                     augmentation=transforms.Compose(augmentations),
+                                                     data_loading_config=data_loading_config,
+                                                     pre_processor=pre_processor(config))
 
-        environment = TrainingEnvironment(max_epochs=environment_config.epochs,
-                                          warm_start=environment_config.warm_start,
-                                          loss_name=environment_config.loss["name"],
-                                          optimizer_name=environment_config.optimizer["name"],
-                                          optimizer_args=environment_config.optimizer["parameters"]
-                                          )
+        environment = TrainingEnvironment.from_config(environment_config)
 
         trainer = Trainer(training_config.name,
                           word_predictor_debug,
@@ -236,7 +106,7 @@ def main(config_name):
         stats.reset()
 
         my_locals = locals()
-        evals = [(eval_obj["name"], inject(eval_obj["data_loader"], my_locals)) for eval_obj in config["evaluation"]]
+        evals = [(eval_obj["name"], inject(eval_obj["data_loader"], my_locals)) for eval_obj in config("evaluation")]
 
     def run_model_evaluation():
         with TimeMeasure(enter_msg="Evaluate model:", exit_msg="Evaluation finished after {} ms."):

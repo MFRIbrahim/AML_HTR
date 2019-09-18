@@ -2,6 +2,13 @@ import torch
 from torch import nn as nn
 
 
+def get_model_by_name(name):
+    if name == "Net":
+        return lambda params: Net(**params)
+    else:
+        raise RuntimeError(f"Unknown specified network '{name}'")
+
+
 class Net(nn.Module):
     def __init__(self, lstm_layers=2, bidirectional=True, dropout=0.0):
         super().__init__()

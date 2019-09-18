@@ -7,12 +7,16 @@ import torch
 import Levenshtein
 
 from statistics import Statistics
-from transformations import rstrip, word_tensor_to_list
-from util import TimeMeasure, save_checkpoint, load_latest_checkpoint
+from transformations import right_strip, word_tensor_to_list
+from util import TimeMeasure, save_checkpoint, load_latest_checkpoint, FrozenDict
 
 
 class TrainingEnvironment(object):
-    def __init__(self, max_epochs=20, warm_start=False, loss_name="CTC", optimizer_name="Adam", optimizer_args={},
+    def __init__(self, max_epochs=20,
+                 warm_start=False,
+                 loss_name="CTC",
+                 optimizer_name="Adam",
+                 optimizer_args=FrozenDict(),
                  save_interval=10):
         self.__max_epochs = max_epochs
         self.__warm_start = warm_start
@@ -66,6 +70,15 @@ class TrainingEnvironment(object):
                                    optimizer_name=dictionary["optimizer"],
                                    optimizer_args=dictionary["optimizer_args"],
                                    save_interval=dictionary["save_interval"]
+                                   )
+
+    @staticmethod
+    def from_config(environment_config):
+        return TrainingEnvironment(max_epochs=environment_config.epochs,
+                                   warm_start=environment_config.warm_start,
+                                   loss_name=environment_config("loss/name"),
+                                   optimizer_name=environment_config("optimizer/name"),
+                                   optimizer_args=environment_config("optimizer/parameters")
                                    )
 
 
@@ -143,7 +156,8 @@ class Trainer(object):
         for (batch_id, (feature_batch, label_batch)) in enumerate(train_loader):
             model.init_hidden(batch_size=feature_batch.size()[0], device=device)
             feature_batch = feature_batch.to(device)
-            label_batch = [np.asarray(rstrip(list(map(int, word)), 1)) for word in word_tensor_to_list(label_batch)]
+            label_batch = [np.asarray(right_strip(list(map(int, word)), 1)) for word in
+                           word_tensor_to_list(label_batch)]
             optimizer.zero_grad()
             model_out = model(feature_batch)
             ctc_input = F.log_softmax(model_out, dim=-1).to(device)
@@ -195,12 +209,12 @@ class Trainer(object):
 
 def evaluate_model(de_en_coder, word_prediction, model, data_loader, device):
     # FIXME function to complex
-    correct, counter, WER, CER = 0, 0, 0, 0 # TODO Refactor WER and CER to real names
+    correct, counter, WER, CER = 0, 0, 0, 0  # TODO Refactor WER and CER to real names
 
     with torch.no_grad():
         for batch_idx, (feature_batch, label_batch) in enumerate(data_loader):
             feature_batch = feature_batch.to(device)
-            label_batch = [rstrip(word, 1.0) for word in word_tensor_to_list(label_batch)]
+            label_batch = [right_strip(word, 1.0) for word in word_tensor_to_list(label_batch)]
             label_batch = [de_en_coder.decode_word(word) for word in label_batch]
             model.init_hidden(batch_size=feature_batch.size()[0], device=device)
 
@@ -215,7 +229,7 @@ def evaluate_model(de_en_coder, word_prediction, model, data_loader, device):
                 token = prediction[i]
                 target = label_batch[i]
 
-                CER += Levenshtein.distance(token, target)/len(target)
+                CER += Levenshtein.distance(token, target) / len(target)
                 if token == target:
                     correct += 1
 
@@ -224,11 +238,11 @@ def evaluate_model(de_en_coder, word_prediction, model, data_loader, device):
 
                 # pad array if more or less words have been predicted than acutally existed
                 if len(single_words_pred) > len(single_words_target):
-                    single_words_target.extend([""]*(len(single_words_pred) - len(single_words_target)))
+                    single_words_target.extend([""] * (len(single_words_pred) - len(single_words_target)))
                 if len(single_words_pred) < len(single_words_target):
-                    single_words_pred.extend([""]*(len(single_words_target) - len(single_words_pred)))
+                    single_words_pred.extend([""] * (len(single_words_target) - len(single_words_pred)))
                 for j in range(len(single_words_pred)):
                     if single_words_pred[j] != single_words_target[j]:
                         errors += 1
-                WER += errors/len(label_batch[i].split(" "))
-                return {"CER": CER/counter, "WER": WER/counter, "Accuracy": correct/counter}
+                WER += errors / len(label_batch[i].split(" "))
+                return {"CER": CER / counter, "WER": WER / counter, "Accuracy": correct / counter}
