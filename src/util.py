@@ -40,7 +40,7 @@ logger = get_htr_logger(__name__)
 
 
 class TimeMeasure(object):
-    def __init__(self, enter_msg="", exit_msg="{} ms.", writer=logger.debug, print_enabled=True):
+    def __init__(self, enter_msg="", exit_msg="{}.", writer=logger.debug, print_enabled=True):
         self.__enter_msg = enter_msg
         self.__exit_msg = exit_msg
         self.__writer = writer
@@ -55,7 +55,7 @@ class TimeMeasure(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self.__print_enabled:
-            self.__writer(self.__exit_msg.format(self.delta))
+            self.__writer(self.__exit_msg.format(pretty_time_interval(self.delta)))
 
     @property
     def delta(self):
@@ -140,3 +140,11 @@ class FrozenDict(Mapping):
 
     def __hash__(self):
         return hash(tuple(sorted(self._d.items())))
+
+
+def pretty_time_interval(millis):
+    seconds, millis = divmod(millis, 1000)
+    minutes, seconds = divmod(seconds, 60)
+    hours, minutes = divmod(minutes, 60)
+    days, hours = divmod(hours, 24)
+    return f"{days}d {hours}h {minutes}min {seconds}sec {millis}ms"

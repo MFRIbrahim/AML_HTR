@@ -31,18 +31,18 @@ class WordsDataSet(Dataset):
             logger.info(f"Selected pre-processor: {pre_processor.name}")
 
         with TimeMeasure(enter_msg="Begin meta data loading.",
-                         exit_msg="Finished meta data loading after {} ms.",
+                         exit_msg="Finished meta data loading after {}.",
                          writer=logger.debug):
             self.__process_meta_file()
             self.__availability_check()
 
         with TimeMeasure(enter_msg="Begin health check.",
-                         exit_msg="Finished health check after {} ms.",
+                         exit_msg="Finished health check after {}.",
                          writer=logger.debug):
             self.__health_check()
 
         with TimeMeasure(enter_msg="Begin creating statistics.",
-                         exit_msg="Finished creating statistics after {} ms.",
+                         exit_msg="Finished creating statistics after {}.",
                          writer=logger.debug):
             self.__create_statistics()
 
@@ -250,7 +250,7 @@ def get_data_loaders(meta_path, images_path, transformation, augmentation, data_
     save_path = data_loading_config.get("save_path", default=None)
 
     with TimeMeasure(enter_msg="Begin initialization of data set.",
-                     exit_msg="Finished initialization of data set after {} ms.",
+                     exit_msg="Finished initialization of data set after {}.",
                      writer=logger.debug):
         data_set = WordsDataSet(meta_path, images_path, transform=transformation, pre_processor=pre_processor)
 
