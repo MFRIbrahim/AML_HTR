@@ -55,7 +55,24 @@ def build_transformations(transformations, my_locals):
 
 
 def build_augmentations(augmentations, my_locals):
-    pass
+    def transformation(entry):
+        return transformation_from_entry(entry, my_locals)
+
+    result = list()
+
+    for augmentation_block in augmentations:
+        transformations = list()
+        if "pre" in augmentation_block:
+            transformations.append(transformation(augmentation_block["pre"]))
+
+        transformations.extend([transformation(entry) for entry in augmentation_block["transformations"]])
+
+        if "post" in augmentation_block:
+            transformations.append(transformation(augmentation_block["post"]))
+
+        result.append(transforms.Compose(transformations))
+
+    return transforms.Compose(result)
 
 
 def main(config_name):
@@ -85,13 +102,14 @@ def main(config_name):
         augmentations = data_loading_config.if_exists(
             path="augmentations",
             runner=lambda augms: build_augmentations(augms, main_locals),
-            default=list()
+            default=None
         )
+        augmentation = transforms.Compose(augmentations) if augmentations is not None else None
 
         train_loader, test_loader = get_data_loaders(meta_path=data_set_config.meta_path,
                                                      images_path=data_set_config.images_path,
                                                      transformation=transforms.Compose(transformations),
-                                                     augmentation=transforms.Compose(augmentations),
+                                                     augmentation=augmentation,
                                                      data_loading_config=data_loading_config,
                                                      pre_processor=pre_processor(config))
 

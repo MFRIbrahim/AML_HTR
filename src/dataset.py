@@ -81,7 +81,8 @@ class WordsDataSet(Dataset):
             for idx, word_meta in enumerate(self.__words):
                 try:
                     self[idx]
-                except (cv2.error, ValueError):
+                except (cv2.error, ValueError) as e:
+                    print(e)
                     to_delete.append(idx)
             print("Write corrupted indices to '{}'".format(health_path))
             with open(health_path, 'w') as fp:
@@ -260,6 +261,9 @@ def get_data_loaders(meta_path, images_path, transformation, augmentation, data_
             test_size = len(data_set) - train_size
             train_data_set, test_data_set = random_split(data_set, (train_size, test_size))
 
+        if augmentation is not None:
+            train_data_set = AugmentedDataSet(train_data_set, augmentation)
+
     if not loaded:
         __save_train_test_split(save_path, train_data_set, test_data_set)
 
@@ -289,3 +293,14 @@ def __restore_train_test_split(path, data_set):
     test_data_set = Subset(data_set, splits[1])
     return train_data_set, test_data_set
 
+
+class AugmentedDataSet(Dataset):
+    def __init__(self, source, augmentation):
+        self.__source = source
+        self.__augmentation = augmentation
+
+    def __len__(self):
+        return len(self.__source)
+
+    def __getitem__(self, idx):
+        return self.__augmentation(self.__source[idx])

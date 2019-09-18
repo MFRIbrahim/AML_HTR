@@ -38,11 +38,9 @@ def deslant_image(img, bgcolor=255, alpha_vals=(-0.3, -0.2, -0.1, -0.05, 0.0, 0.
 
     if img.ndim == 3 and img.shape[0] == 1:
         img = img[0]
-    try:
-        _, img_bw = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    except cv2.error as e:
-        print(e)
-        raise SystemExit("Threshhold rip")
+
+    _, img_bw = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
     # FIXME potentially useless?
     # alpha_vals = alpha_vals
     # sum_alpha = [0]*len(alpha_vals)
