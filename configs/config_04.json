@@ -66,7 +66,7 @@
     "save_path": "../dataset_splits/split.sav"
   },
   "training": {
-    "name": "Net_small_500_epochs-total",
+    "name": "Deslant_Net-small_500_augmentations",
     "retrain": true,
     "environment": {
       "epochs": 500,

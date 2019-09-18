@@ -11,8 +11,6 @@ import yaml
 import logging
 import logging.config
 
-logger = logging.getLogger(__name__)
-
 
 def is_file(path):
     return p_exists(path) and p_isfile(path)
@@ -27,6 +25,18 @@ def make_directories_for_file(path):
 
     if not p_exists(directory):
         makedirs(directory)
+
+
+def get_htr_logger(name):
+    with open('../configs/logging_config.yaml', 'r') as f:
+        make_directories_for_file(p_join("../logs/info.log"))
+        config = yaml.safe_load(f.read())
+        logging.config.dictConfig(config)
+
+    return logging.getLogger(name)
+
+
+logger = get_htr_logger(__name__)
 
 
 class TimeMeasure(object):
@@ -130,10 +140,3 @@ class FrozenDict(Mapping):
 
     def __hash__(self):
         return hash(tuple(sorted(self._d.items())))
-
-
-def setup_logger():
-    with open('../configs/logging_config.yaml', 'r') as f:
-        make_directories_for_file(p_join("../logs/info.log"))
-        config = yaml.safe_load(f.read())
-        logging.config.dictConfig(config)

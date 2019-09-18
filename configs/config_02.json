@@ -18,15 +18,18 @@
     "train_size": 0.6,
     "batch_size": 50,
     "transformations": [
+      "GrayScale",
       {
-        "name": "GrayScale"
+        "name": "PadTranscript",
+        "parameters": {
+          "max_word_length": 32
+        }
       },
       {
         "name": "Rescale",
         "parameters": {
           "new_width": 128,
-          "new_height": 32,
-          "max_word_length": 32
+          "new_height": 32
         }
       },
       {
@@ -35,14 +38,36 @@
           "char_to_int": "locals://de_en_coder/char_to_idx"
         }
       }
-    ]
+    ],
+    "augmentations": [
+      {
+        "pre": "TensorToPIL",
+        "transformations": [
+          "RandomRotateAndTranslate",
+          "RandomJitter",
+          "RandomPerspective"
+        ],
+        "post": {
+          "name": "ToTensor",
+          "parameters": {
+            "char_to_int": "locals://de_en_coder/char_to_idx"
+          }
+        }
+      },
+      {
+        "transformations": [
+          "RandomErasing"
+        ]
+      }
+    ],
+    "save_path": "../dataset_splits/split.sav"
   },
   "training": {
-    "name": "Net_small",
+    "name": "Standard_Net-small_500_augmentations",
     "retrain": true,
     "environment": {
-      "epochs": 400,
-      "warm_start": true,
+      "epochs": 500,
+      "warm_start": false,
       "loss": {
         "name": "CTC"
       },
