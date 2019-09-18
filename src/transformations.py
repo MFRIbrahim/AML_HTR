@@ -1,11 +1,16 @@
-from torchvision import transforms
-from cv2 import cvtColor, COLOR_BGR2GRAY, resize, imshow, waitKey
-from torch import Tensor as TorchTensor
-import torch
+import logging
+import threading
+
 import PIL
 import numpy as np
-from deslant import deslant_image
-from util import inject
+import torch
+from cv2 import cvtColor, COLOR_BGR2GRAY, resize
+from torch import Tensor as TorchTensor
+from torchvision import transforms
+
+from util import inject, get_htr_logger
+
+logger = get_htr_logger(__name__)
 
 
 def transformation_from_entry(entry, my_locals):
@@ -61,8 +66,8 @@ class PadTranscript(object):
 
     def __call__(self, sample):
         image, transcript = sample["image"], sample["transcript"]
-        padded_transcript = (transcript + self.__max_word_length*" ")[:self.__max_word_length]
-        return {"image": image, "transcript":padded_transcript}
+        padded_transcript = (transcript + self.__max_word_length * " ")[:self.__max_word_length]
+        return {"image": image, "transcript": padded_transcript}
 
 
 class Rescale(object):
@@ -123,7 +128,7 @@ class RandomErasing(object):
     def __init__(self, p=0.1, scale=(0.02, 0.04), ratio=(0.3, 3.3), value=1):
         self.__transform = transforms.RandomErasing(p=p, scale=scale, ratio=ratio, value=value)
 
-    def __call__ (self, sample):
+    def __call__(self, sample):
         image, transcript = sample
         if not (type(image) == torch.Tensor):
             raise ValueError(f"Can only perform random erasing torch.Tensor, not  '{type(image)}'")
@@ -132,7 +137,8 @@ class RandomErasing(object):
 
 class RandomRotateAndTranslate(object):
     def __init__(self, p=0.1, degrees=0, translate=(0.03, 0.03), fillcolor=255):
-        self.__transform = transforms.RandomApply([transforms.RandomAffine(degrees=degrees, translate=translate, fillcolor=fillcolor)], p=p)
+        self.__transform = transforms.RandomApply(
+            [transforms.RandomAffine(degrees=degrees, translate=translate, fillcolor=fillcolor)], p=p)
 
     def __call__(self, sample):
         image, transcript = sample
@@ -153,6 +159,7 @@ class RandomJitter(object):
 
 
 class RandomPerspective(object):
+
     def __init__(self, p=0.1, warp_ratio=0.0003, fillcolor=255):
         self.p = p
         self.warp_ratio = warp_ratio
@@ -165,26 +172,32 @@ class RandomPerspective(object):
         return {"image": self.__warp(image), "transcript": transcript}
 
     def __warp(self, img):
-        if np.random.rand() > self.p:
-            return img
-        pa = torch.Tensor([[0,0], [0,1], [1,0], [1,1]])
-        pb = pa + torch.randn(4, 2) * self.warp_ratio
+        try:
+            if np.random.rand() > self.p:
+                return img
+            pa = torch.Tensor([[0, 0], [0, 1], [1, 0], [1, 1]])
+            pb = pa + torch.randn(4, 2) * self.warp_ratio
 
-        img = img.transform(img.size,
-                            PIL.Image.PERSPECTIVE,
-                            RandomPerspective.__find_coefficients(pa, pb),
-                            PIL.Image.BICUBIC,
-                            fillcolor=self.fillcolor)
-        return img
+            result = img.transform(img.size,
+                                   PIL.Image.PERSPECTIVE,
+                                   RandomPerspective.__find_coefficients(pa, pb),
+                                   PIL.Image.BICUBIC,
+                                   fillcolor=self.fillcolor)
+
+        except np.linalg.LinAlgError:
+            result = img
+
+        return result
 
     @staticmethod
     def __find_coefficients(pa, pb):
         matrix = []
         for p1, p2 in zip(pa, pb):
-            matrix.append([p1[0], p1[1], 1, 0, 0, 0, -p2[0]*p1[0], -p2[0]*p1[1]])
-            matrix.append([0, 0, 0, p1[0], p1[1], 1, -p2[1]*p1[0], -p2[1]*p1[1]])
+            matrix.append([p1[0], p1[1], 1, 0, 0, 0, -p2[0] * p1[0], -p2[0] * p1[1]])
+            matrix.append([0, 0, 0, p1[0], p1[1], 1, -p2[1] * p1[0], -p2[1] * p1[1]])
 
-        A = np.array(matrix, dtype=np.float)
+        # np.matrix needed, because otherwise 10% of the time it crashes, Reason: Singular Matrix
+        A = np.matrix(matrix, dtype=np.float)
         B = np.array(pb).reshape(8)
 
         res = np.dot(np.linalg.inv(A.T * A) * A.T, B)

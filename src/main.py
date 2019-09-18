@@ -8,10 +8,8 @@ from pre_processing import pre_processor
 from school import TrainingEnvironment, Trainer, evaluate_model
 from statistics import Statistics
 from transformations import transformation_from_entry
-from util import WordDeEnCoder, TimeMeasure, inject, setup_logger
+from util import WordDeEnCoder, TimeMeasure, inject, get_htr_logger
 from word_prediction import get_decoder_by_name
-
-import logging
 
 
 def get_available_device():
@@ -66,9 +64,9 @@ def build_augmentations(augmentations, my_locals):
         if "post" in augmentation_block:
             transformations.append(transformation(augmentation_block["post"]))
 
-        result.append(transforms.Compose(transformations))
+        result.extend(transformations)
 
-    return transforms.Compose(result)
+    return result
 
 
 def main(config_name):
@@ -158,8 +156,7 @@ def main(config_name):
 
 
 if __name__ == "__main__":
-    setup_logger()
-    logger = logging.getLogger(__name__)
+    logger = get_htr_logger(__name__)
     logger.info("=" * 35 + " START " + "=" * 35)
-    main("config_04")
+    main("config_01")
     logger.info("=" * 35 + " END " + "=" * 35)

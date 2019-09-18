@@ -1,18 +1,17 @@
 from copy import copy
 from os.path import join as p_join
-from torch.optim import Adam
-from torch.nn import CTCLoss, functional as F
+
+import Levenshtein
 import numpy as np
 import torch
-import Levenshtein
+from torch.nn import CTCLoss, functional as F
+from torch.optim import Adam
 
 from statistics import Statistics
 from transformations import right_strip, word_tensor_to_list
-from util import TimeMeasure, save_checkpoint, load_latest_checkpoint, FrozenDict
-import logging
+from util import TimeMeasure, save_checkpoint, load_latest_checkpoint, FrozenDict, get_htr_logger
 
-
-logger = logging.getLogger(__name__)
+logger = get_htr_logger(__name__)
 
 
 class TrainingEnvironment(object):
@@ -118,10 +117,12 @@ class Trainer(object):
         self.model_eval = lambda: dict()
 
     def train(self, model, train_loader, current_epoch=0, device="cpu"):
+        logger.info("Enter training mode.")
         total_epochs = current_epoch
         last_save, loss = 0, None
         stats = Statistics.get_instance(self.__name)
 
+        logger.info(f"Try warm start? - {'Yes' if self.__environment.warm_start else 'No'}")
         if self.__environment.warm_start:
             try:
                 total_epochs, state_dict, loss = self.__load_progress()
@@ -132,7 +133,7 @@ class Trainer(object):
         for epoch_idx in range(1, self.__environment.max_epochs + 1):
             enter_msg = f"Train Epoch: {epoch_idx: 4d} (total: {total_epochs + 1: 4d})"
             with TimeMeasure(enter_msg=enter_msg,
-                             writer=logger.debug,
+                             writer=logger.info,
                              print_enabled=self.__print_enabled) as tm:
                 current_learning_rate = self.__learning_rate_adaptor(total_epochs)
                 loss, words = self.core_training(model, train_loader, current_learning_rate, device)
@@ -192,8 +193,8 @@ class Trainer(object):
     def __print_words_in_batch(self, ctc_input):
         cpu_input = np.array(copy(ctc_input).detach().cpu())
         out = self.__word_prediction(cpu_input)
-        for i, word in enumerate(out):
-            logger.debug("{:02d}: '{}'".format(i, word))
+        #for i, word in enumerate(out):
+         #   logger.debug("{:02d}: '{}'".format(i, word))
         return out
 
     def __save_progress(self, total_epochs, model, loss):
