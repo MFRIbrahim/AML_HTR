@@ -30,15 +30,15 @@ class DeslantPreprocessor(object):
         root = os.path.dirname(img_directory)
         deslant_path = meta.path(os.path.join(root, self.name.lower() + "_images"))
 
-        if is_file(deslant_path):
-            result = cv2.imread(deslant_path)
-        else:
+        if not is_file(deslant_path):
             make_directories_for_file(deslant_path)
             original_path = meta.path(img_directory)
             image = cv2.imread(original_path)
             image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-            result = self.__transform(image)
+            image = self.__transform(image)
             cv2.imwrite(deslant_path, image)
+
+        result = cv2.imread(deslant_path)
 
         return result
 
