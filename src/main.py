@@ -1,5 +1,3 @@
-import json
-
 import torch
 from torchvision import transforms
 
@@ -9,13 +7,11 @@ from model import get_model_by_name
 from pre_processing import pre_processor
 from school import TrainingEnvironment, Trainer, evaluate_model
 from statistics import Statistics
-from transformations import get_transformation_by_name, transformation_from_entry
-from util import WordDeEnCoder, TimeMeasure, inject
+from transformations import transformation_from_entry
+from util import WordDeEnCoder, TimeMeasure, inject, setup_logger
 from word_prediction import get_decoder_by_name
-from copy import deepcopy
-import os
-import cv2
-import numpy as np
+
+import logging
 
 
 def get_available_device():
@@ -76,10 +72,11 @@ def build_augmentations(augmentations, my_locals):
 
 
 def main(config_name):
-    with TimeMeasure(enter_msg="Setup everything", exit_msg="Setup finished after {} ms."):
+    logger.info(f"Run with config '{config_name}'.")
+    with TimeMeasure(enter_msg="Setup everything", exit_msg="Setup finished after {} ms.", writer=logger.debug):
         torch.manual_seed(0)
         device = get_available_device()
-        print("Active device:", device)
+        logger.info(f"Active device: {device}")
 
         config = Configuration(f"../configs/{config_name}.json")
 
@@ -127,7 +124,9 @@ def main(config_name):
         evals = [(eval_obj["name"], inject(eval_obj["data_loader"], my_locals)) for eval_obj in config("evaluation")]
 
     def run_model_evaluation():
-        with TimeMeasure(enter_msg="Evaluate model:", exit_msg="Evaluation finished after {} ms."):
+        with TimeMeasure(enter_msg="Evaluate model:",
+                         exit_msg="Evaluation finished after {} ms.",
+                         writer=logger.debug):
             result = dict()
             for name, loader in evals:
                 metrics = evaluate_model(word_prediction=word_predictor,
@@ -137,20 +136,30 @@ def main(config_name):
                                          device=device
                                          )
                 for k in metrics.keys():
-                    print(f"{name} {k}: {metrics[k]:7.4f}")
+                    logger.debug(f"{name} {k}: {metrics[k]:7.4f}")
                 result[name] = metrics
         return result
 
     trainer.model_eval = run_model_evaluation
 
-    with TimeMeasure(enter_msg="Get trained model.", exit_msg="Obtained trained model after {} ms."):
+    with TimeMeasure(enter_msg="Get trained model.",
+                     exit_msg="Obtained trained model after {} ms.",
+                     writer=logger.debug):
         if training_config.retrain:
-            with TimeMeasure(enter_msg="Begin Training.", exit_msg="Finished complete training after {} ms."):
+            with TimeMeasure(enter_msg="Begin Training.",
+                             exit_msg="Finished complete training after {} ms.",
+                             writer=logger.debug):
                 trainer.train(model, train_loader, device=device)
         else:
-            with TimeMeasure(enter_msg="Load pre-trained model.", exit_msg="Finished loading after {} ms."):
+            with TimeMeasure(enter_msg="Load pre-trained model.",
+                             exit_msg="Finished loading after {} ms.",
+                             writer=logger.debug):
                 trainer.load_latest_model_state_into(model)
 
 
 if __name__ == "__main__":
+    setup_logger()
+    logger = logging.getLogger(__name__)
+    logger.info("=" * 35 + " START " + "=" * 35)
     main("config_04")
+    logger.info("=" * 35 + " END " + "=" * 35)

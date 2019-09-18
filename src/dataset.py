@@ -1,14 +1,17 @@
+import logging
+import os
+from json import dump as json_write, load as json_read
+
+import cv2
+import dill
+import numpy as np
+from torch import Tensor as TorchTensor
 from torch.utils.data import Dataset, DataLoader, random_split
 from torch.utils.data.dataset import Subset
-from json import dump as json_write, load as json_read
-from torch import Tensor as TorchTensor
-import cv2
-import numpy as np
-import os
-import dill
 
-from deslant import deslant_image
-from util import TimeMeasure, is_file, make_directories_for_file, FrozenDict
+from util import TimeMeasure, is_file, make_directories_for_file
+
+logger = logging.getLogger(__name__)
 
 
 class WordsDataSet(Dataset):
@@ -23,24 +26,24 @@ class WordsDataSet(Dataset):
         self.__pre_processor = pre_processor
 
         if self.__pre_processor is None:
-            print("No pre-processor selected.")
+            logger.info("No pre-processor selected.")
         else:
-            print(f"Selected pre-processor: {pre_processor.name}")
+            logger.info(f"Selected pre-processor: {pre_processor.name}")
 
         with TimeMeasure(enter_msg="Begin meta data loading.",
                          exit_msg="Finished meta data loading after {} ms.",
-                         writer=print):
+                         writer=logger.debug):
             self.__process_meta_file()
             self.__availability_check()
 
         with TimeMeasure(enter_msg="Begin health check.",
                          exit_msg="Finished health check after {} ms.",
-                         writer=print):
+                         writer=logger.debug):
             self.__health_check()
 
         with TimeMeasure(enter_msg="Begin creating statistics.",
                          exit_msg="Finished creating statistics after {} ms.",
-                         writer=print):
+                         writer=logger.debug):
             self.__create_statistics()
 
     def __process_meta_file(self):
@@ -57,7 +60,7 @@ class WordsDataSet(Dataset):
         for idx, word_meta in enumerate(self.__words):
             path = word_meta.path(self.__root_dir)
             if not is_file(path):
-                print("File not found:", path)
+                logger.warning("File not found:", path)
                 to_delete.append(idx)
 
         self.__save_delete_indices(to_delete)
@@ -82,13 +85,13 @@ class WordsDataSet(Dataset):
                 try:
                     self[idx]
                 except (cv2.error, ValueError) as e:
-                    print(e)
+                    logger.error(f"Corrupted file at index: {idx}")
                     to_delete.append(idx)
-            print("Write corrupted indices to '{}'".format(health_path))
+            logger.debug(f"Write corrupted indices to '{health_path}'")
             with open(health_path, 'w') as fp:
                 json_write(to_delete, fp)
 
-        print("WordsDataSet - Health Check: {} indices={} not readable.".format(len(to_delete), to_delete))
+        logger.info(f"WordsDataSet - Health Check: {len(to_delete)} indices={to_delete} not readable.")
         self.__save_delete_indices(to_delete)
 
     def __create_statistics(self):
@@ -248,10 +251,10 @@ def get_data_loaders(meta_path, images_path, transformation, augmentation, data_
 
     with TimeMeasure(enter_msg="Begin initialization of data set.",
                      exit_msg="Finished initialization of data set after {} ms.",
-                     writer=print):
+                     writer=logger.debug):
         data_set = WordsDataSet(meta_path, images_path, transform=transformation, pre_processor=pre_processor)
 
-    with TimeMeasure(enter_msg="Splitting data set", writer=print):
+    with TimeMeasure(enter_msg="Splitting data set", writer=logger.debug):
         if restore_path is not None and os.path.exists(restore_path):
             loaded = True
             train_data_set, test_data_set = __restore_train_test_split(restore_path, data_set)
@@ -267,7 +270,7 @@ def get_data_loaders(meta_path, images_path, transformation, augmentation, data_
     if not loaded:
         __save_train_test_split(save_path, train_data_set, test_data_set)
 
-    with TimeMeasure(enter_msg="Init data loader", writer=print):
+    with TimeMeasure(enter_msg="Init data loader", writer=logger.debug):
         train_loader = DataLoader(train_data_set, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=False)
         test_loader = DataLoader(test_data_set, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=False)
 
@@ -285,9 +288,14 @@ def __restore_train_test_split(path, data_set):
         splits = dill.load(fp)
 
     if type(splits) != list:
-        raise ValueError(f"Unknown datatype for splits: '{type(splits)}', has to be list")
+        msg = f"Unknown datatype for splits: '{type(splits)}', has to be list"
+        logger.critical(msg)
+        raise ValueError(msg)
+
     if len(splits) != 2:
-        raise ValueError(f"Expected splits to have length 2, not '{len(splits)}'")
+        msg = f"Expected splits to have length 2, not '{len(splits)}'"
+        logger.critical(msg)
+        raise ValueError(msg)
 
     train_data_set = Subset(data_set, splits[0])
     test_data_set = Subset(data_set, splits[1])
@@ -304,3 +312,7 @@ class AugmentedDataSet(Dataset):
 
     def __getitem__(self, idx):
         return self.__augmentation(self.__source[idx])
+
+    @property
+    def indices(self):
+        return self.__source.indices

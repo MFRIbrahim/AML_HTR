@@ -7,6 +7,11 @@ from os.path import exists as p_exists, join as p_join, isfile as p_isfile, isdi
 
 import numpy as np
 from torch import load as torch_load, save as torch_save
+import yaml
+import logging
+import logging.config
+
+logger = logging.getLogger(__name__)
 
 
 def is_file(path):
@@ -25,7 +30,7 @@ def make_directories_for_file(path):
 
 
 class TimeMeasure(object):
-    def __init__(self, enter_msg="", exit_msg="{} ms.", writer=print, print_enabled=True):
+    def __init__(self, enter_msg="", exit_msg="{} ms.", writer=logger.debug, print_enabled=True):
         self.__enter_msg = enter_msg
         self.__exit_msg = exit_msg
         self.__writer = writer
@@ -57,6 +62,7 @@ def save_checkpoint(path, total_epochs, model, loss, environment):
     dictionary["loss"] = loss
     dictionary["environment"] = environment.to_dict()
     torch_save(dictionary, path)
+    logger.info(f"Saved checkpoint in epoch {total_epochs} to '{path}'.")
 
 
 def load_checkpoint(path):
@@ -109,7 +115,6 @@ def inject(value, my_locals):
 
 
 class FrozenDict(Mapping):
-
     def __init__(self, *args, **kwargs):
         self._d = dict(*args, **kwargs)
         self._hash = None
@@ -125,3 +130,10 @@ class FrozenDict(Mapping):
 
     def __hash__(self):
         return hash(tuple(sorted(self._d.items())))
+
+
+def setup_logger():
+    with open('../configs/logging_config.yaml', 'r') as f:
+        make_directories_for_file(p_join("../logs/info.log"))
+        config = yaml.safe_load(f.read())
+        logging.config.dictConfig(config)
