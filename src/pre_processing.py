@@ -6,6 +6,10 @@ import numpy as np
 from deslant import deslant_image
 from util import FrozenDict, is_file, make_directories_for_file
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def pre_processor(config):
     name = config.get("data_set/pre_processor/name", default=None)
@@ -50,6 +54,8 @@ class Deslant(object):
 
     def __call__(self, image):
         if not (type(image) == np.ndarray):
-            raise ValueError(f"Can only perform deslanting on np.ndarray, not '{type(image)}'")
+            msg = f"Can only perform deslanting on np.ndarray, not '{type(image)}'"
+            logger.critical(msg)
+            raise ValueError(msg)
 
         return deslant_image(image, bgcolor=self.fillcolor, alpha_vals=self.alpha_values)

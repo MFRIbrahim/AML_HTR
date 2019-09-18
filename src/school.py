@@ -9,6 +9,10 @@ import Levenshtein
 from statistics import Statistics
 from transformations import right_strip, word_tensor_to_list
 from util import TimeMeasure, save_checkpoint, load_latest_checkpoint, FrozenDict
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 class TrainingEnvironment(object):
@@ -100,13 +104,16 @@ def optimizer_creator_by_name(name):
 
 
 class Trainer(object):
-    def __init__(self, name, word_prediction, dynamic_learning_rate=lambda idx: 1e-4, print_enabled=True, writer=print,
+    def __init__(self,
+                 name,
+                 word_prediction,
+                 dynamic_learning_rate=lambda idx: 1e-4,
+                 print_enabled=True,
                  environment=None):
         self.__name = name
         self.__word_prediction = word_prediction
         self.__learning_rate_adaptor = dynamic_learning_rate
         self.__print_enabled = print_enabled
-        self.__writer = writer
         self.__environment = TrainingEnvironment() if environment is None else environment
         self.model_eval = lambda: dict()
 
@@ -120,14 +127,16 @@ class Trainer(object):
                 total_epochs, state_dict, loss = self.__load_progress()
                 model.load_state_dict(state_dict)
             except RuntimeError:
-                self.__writer("Warm start was not possible!")
+                logger.warning("Warm start was not possible!")
 
         for epoch_idx in range(1, self.__environment.max_epochs + 1):
-            enter_msg = "Train Epoch: {: 4d} (total: {: 4d})".format(epoch_idx, total_epochs + 1)
-            with TimeMeasure(enter_msg=enter_msg, writer=self.__writer, print_enabled=self.__print_enabled) as tm:
+            enter_msg = f"Train Epoch: {epoch_idx: 4d} (total: {total_epochs + 1: 4d})"
+            with TimeMeasure(enter_msg=enter_msg,
+                             writer=logger.debug,
+                             print_enabled=self.__print_enabled) as tm:
                 current_learning_rate = self.__learning_rate_adaptor(total_epochs)
                 loss, words = self.core_training(model, train_loader, current_learning_rate, device)
-                self.__writer("loss: {}".format(loss))
+                logger.info("loss: {}".format(loss))
                 total_epochs += 1
 
                 stats.save_per_epoch(total_epochs, tm.delta, loss, words)
@@ -137,7 +146,7 @@ class Trainer(object):
                     self.__save_period_stats(total_epochs)
 
         if last_save < total_epochs:
-            print("final save")
+            logger.info("final save")
             self.__save_progress(total_epochs, model, loss)
             self.__save_period_stats(total_epochs)
 
@@ -184,11 +193,12 @@ class Trainer(object):
         cpu_input = np.array(copy(ctc_input).detach().cpu())
         out = self.__word_prediction(cpu_input)
         for i, word in enumerate(out):
-            print("{:02d}: '{}'".format(i, word))
+            logger.debug("{:02d}: '{}'".format(i, word))
         return out
 
     def __save_progress(self, total_epochs, model, loss):
-        with TimeMeasure(enter_msg="Saving progress...", writer=self.__writer,
+        with TimeMeasure(enter_msg="Saving progress...",
+                         writer=logger.debug,
                          print_enabled=self.__print_enabled):
             path = p_join("trained_models", self.__name, "epoch-{:05d}.pt".format(total_epochs))
             save_checkpoint(path, total_epochs, model, loss, self.__environment)
@@ -199,8 +209,7 @@ class Trainer(object):
 
         stats.save_per_period(total_epochs,
                               train_acc=accs.get("train", 0.0),
-                              test_acc=accs.get("test", 0.0)
-                              )
+                              test_acc=accs.get("test", 0.0))
 
     def load_latest_model_state_into(self, model):
         total_epochs, state_dict, loss = self.__load_progress()

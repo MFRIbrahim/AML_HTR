@@ -154,7 +154,6 @@ class RandomJitter(object):
 
 class RandomPerspective(object):
     def __init__(self, p=0.1, warp_ratio=0.0003, fillcolor=255):
-        self.__transform = transforms.Lambda(self.__warp)
         self.p = p
         self.warp_ratio = warp_ratio
         self.fillcolor = fillcolor
@@ -163,7 +162,7 @@ class RandomPerspective(object):
         image, transcript = sample
         if not (type(image) == PIL.Image.Image):
             raise ValueError("Can only perform random perspective on PIL.Image.Image, not  '{}'".format(type(image)))
-        return {"image": self.__transform(image), "transcript": transcript}
+        return {"image": self.__warp(image), "transcript": transcript}
 
     def __warp(self, img):
         if np.random.rand() > self.p:
@@ -173,7 +172,7 @@ class RandomPerspective(object):
 
         img = img.transform(img.size,
                             PIL.Image.PERSPECTIVE,
-                            self.__find_coefficients(pa, pb),
+                            RandomPerspective.__find_coefficients(pa, pb),
                             PIL.Image.BICUBIC,
                             fillcolor=self.fillcolor)
         return img
