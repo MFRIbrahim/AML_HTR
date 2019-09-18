@@ -36,6 +36,7 @@ class DeslantPreprocessor(object):
             make_directories_for_file(deslant_path)
             original_path = meta.path(img_directory)
             image = cv2.imread(original_path)
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
             result = self.__transform(image)
             cv2.imwrite(deslant_path, image)
 
