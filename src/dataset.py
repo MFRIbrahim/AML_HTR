@@ -8,6 +8,7 @@ import numpy as np
 from torch import Tensor as TorchTensor
 from torch.utils.data import Dataset, DataLoader, random_split
 from torch.utils.data.dataset import Subset
+from sklearn.model_selection import KFold
 
 from util import TimeMeasure, is_file, make_directories_for_file
 
@@ -277,6 +278,33 @@ def get_data_loaders(meta_path, images_path, transformation, augmentation, data_
     return train_loader, test_loader
 
 
+def get_data_loaders_cv(meta_path,
+                        images_path,
+                        transformation,
+                        augmentation,
+                        data_loading_config,
+                        pre_processor=None,
+                        number_of_splits=3):
+    batch_size = data_loading_config.batch_size
+
+    with TimeMeasure(enter_msg="Begin initialization of data set.",
+                     exit_msg="Finished initialization of data set after {}.",
+                     writer=logger.debug):
+        data_set = WordsDataSet(meta_path, images_path, transform=transformation, pre_processor=pre_processor)
+
+    with TimeMeasure(enter_msg="Splitting data set", writer=logger.debug):
+        train_test_array = cv_split(data_set, number_of_splits, augmentation)
+
+    with TimeMeasure(enter_msg="Init data loader", writer=logger.debug):
+        loader_array = []
+        for train_set, test_set in train_test_array:
+            train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=False)
+            test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=False)
+            loader_array.append((train_loader, test_loader))
+
+    return loader_array
+
+
 def __save_train_test_split(path, train_data_set, test_data_set):
     make_directories_for_file(path)
     with open(path, "wb") as fp:
@@ -316,3 +344,28 @@ class AugmentedDataSet(Dataset):
     @property
     def indices(self):
         return self.__source.indices
+
+
+def cv_split(dataset, n, augmentation=None):
+    """
+    Split the dataset into n non-overlapping new datasets where one is used for testing and
+    return an array that contains the sequence of splits.
+
+    Arguments:
+        dataset (Dataset): Dataset to be split
+        n (int): number of non-overlapping new datasets
+        augmentation : augmentations
+    """
+    cv = KFold(n_splits=n, random_state=0)
+    res = []
+
+    for train_index, test_index in cv.split(dataset):
+        train_set = Subset(dataset, train_index)
+        test_set = Subset(dataset, test_index)
+
+        if augmentation is not None:
+            train_set = AugmentedDataSet(train_set, augmentation)
+
+        res.append((train_set, test_set))
+
+    return res

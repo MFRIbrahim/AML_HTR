@@ -263,3 +263,7 @@ def __calculate_word_error_rate(single_words_pred, single_words_target):
     errors = sum([1 for j in range(len(single_words_pred)) if single_words_pred[j] != single_words_target[j]])
 
     return errors / word_count
+
+
+class KfoldTrainer(object):
+    pass
