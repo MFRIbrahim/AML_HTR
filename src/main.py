@@ -155,8 +155,15 @@ def main(config_name):
                 trainer.load_latest_model_state_into(model)
 
 
+def run_config(config_name):
+    logger.info("=" * 35 + " START " + "=" * 35)
+    main(config_name)
+    logger.info("=" * 35 + " END " + "=" * 35)
+
+
 if __name__ == "__main__":
     logger = get_htr_logger(__name__)
-    logger.info("=" * 35 + " START " + "=" * 35)
-    main("config_01")
-    logger.info("=" * 35 + " END " + "=" * 35)
+    run_config("config_01")
+    run_config("config_02")
+    run_config("config_03")
+    run_config("config_04")
