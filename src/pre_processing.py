@@ -18,7 +18,7 @@ def pre_processor(config):
     if name == "Deslant":
         return DeslantPreprocessor(name, params=parameters)
     else:
-        raise None
+        return None
 
 
 class DeslantPreprocessor(object):

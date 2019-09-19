@@ -193,8 +193,8 @@ class Trainer(object):
     def __print_words_in_batch(self, ctc_input):
         cpu_input = np.array(copy(ctc_input).detach().cpu())
         out = self.__word_prediction(cpu_input)
-        #for i, word in enumerate(out):
-         #   logger.debug("{:02d}: '{}'".format(i, word))
+        # for i, word in enumerate(out):
+        #   logger.debug("{:02d}: '{}'".format(i, word))
         return out
 
     def __save_progress(self, total_epochs, model, loss):
@@ -218,8 +218,8 @@ class Trainer(object):
 
 
 def evaluate_model(de_en_coder, word_prediction, model, data_loader, device):
-    # FIXME function to complex
-    correct, counter, WER, CER = 0, 0, 0, 0  # TODO Refactor WER and CER to real names
+    correct, counter = 0, 0
+    character_error_rate, word_error_rate = 0, 0
 
     with torch.no_grad():
         for batch_idx, (feature_batch, label_batch) in enumerate(data_loader):
@@ -233,26 +233,33 @@ def evaluate_model(de_en_coder, word_prediction, model, data_loader, device):
             prediction = word_prediction(output)
 
             for i in range(len(prediction)):
-                errors = 0
                 counter += 1
 
-                token = prediction[i]
-                target = label_batch[i]
+                token, target = prediction[i], label_batch[i]
 
-                CER += Levenshtein.distance(token, target) / len(target)
+                character_error_rate += Levenshtein.distance(token, target) / len(target)
                 if token == target:
                     correct += 1
 
-                single_words_pred = prediction[i].split(" ")
-                single_words_target = label_batch[i].split(" ")
+                single_words_pred, single_words_target = prediction[i].split(" "), label_batch[i].split(" ")
 
-                # pad array if more or less words have been predicted than acutally existed
-                if len(single_words_pred) > len(single_words_target):
-                    single_words_target.extend([""] * (len(single_words_pred) - len(single_words_target)))
-                if len(single_words_pred) < len(single_words_target):
-                    single_words_pred.extend([""] * (len(single_words_target) - len(single_words_pred)))
-                for j in range(len(single_words_pred)):
-                    if single_words_pred[j] != single_words_target[j]:
-                        errors += 1
-                WER += errors / len(label_batch[i].split(" "))
-                return {"CER": CER / counter, "WER": WER / counter, "Accuracy": correct / counter}
+                word_error_rate += __calculate_word_error_rate(single_words_pred, single_words_target)
+
+    return {"Accuracy": correct / counter,
+            "Character Error Rate": character_error_rate / counter,
+            "Word Error Rate": word_error_rate / counter}
+
+
+def __calculate_word_error_rate(single_words_pred, single_words_target):
+    word_count = len(single_words_target)
+    padded_words = [""] * abs(len(single_words_pred) - len(single_words_target))
+
+    if len(single_words_pred) > len(single_words_target):
+        single_words_target.extend(padded_words)
+
+    elif len(single_words_pred) < len(single_words_target):
+        single_words_pred.extend(padded_words)
+
+    errors = sum([1 for j in range(len(single_words_pred)) if single_words_pred[j] != single_words_target[j]])
+
+    return errors / word_count
