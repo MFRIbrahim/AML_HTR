@@ -158,5 +158,5 @@ def main(config_name):
 if __name__ == "__main__":
     logger = get_htr_logger(__name__)
     logger.info("=" * 35 + " START " + "=" * 35)
-    main("config_04")
+    main("config_01")
     logger.info("=" * 35 + " END " + "=" * 35)

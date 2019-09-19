@@ -28,9 +28,12 @@ class Statistics(object):
     def save_per_period(self, epoch, train_acc, test_acc):
         path = os.path.join("statistics", self.__name, "2_period_data.txt")
         make_directories_for_file(path)
+
         with open(path, "a+", encoding="utf-8") as fp:
-            for k in train_acc.keys():
-                print(f"{epoch:5d}\t{100*train_acc[k]:9.6f}\t{100*test_acc[k]:9.6f}\t", file=fp)
+            ordered_keys = sorted(list(train_acc.keys()))
+            train_data = "\t".join([f"{100 * train_acc[key]:9.6f}" for key in ordered_keys])
+            test_data = "\t".join([f"{100 * test_acc[key]:9.6f}" for key in ordered_keys])
+            print(f"{epoch:5d}\t{train_data}\t{test_data}\t", file=fp)
 
     @staticmethod
     def get_instance(name):
