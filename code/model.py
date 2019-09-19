@@ -12,6 +12,8 @@ import cv2
 from copy import copy
 from beam_search import ctcBeamSearch
 from data_augmentation import DataAugmenter
+from deslant import deslant_image
+import ctypes
 
 if torch.cuda.is_available():
     device = 'cuda'
@@ -186,7 +188,7 @@ def data_loader(words_file, data_dir, batch_size, image_size, num_words, train_r
     #TODO: scale all the inputs to 32x128
     # words_file: absolute path of words.txt
     # data_dir: absolute path of directory that contains the word folders (a01, a02, etc...)
-    transform = DataAugmenter(p_erase=0.1, p_jitter=0.1, p_translate=0.1, p_perspective=0.1)
+    transform = DataAugmenter(p_erase=0.03, p_jitter=0.5, p_translate=0.1, p_perspective=0.2)
     dataset = []
 
     with open(words_file) as f:
@@ -211,6 +213,7 @@ def data_loader(words_file, data_dir, batch_size, image_size, num_words, train_r
                     continue
                 if counter >= num_words:
                     break
+
                 (ht, wt) = image_size
                 (w, h) = img.size
                 fx = w / wt
@@ -230,12 +233,14 @@ def data_loader(words_file, data_dir, batch_size, image_size, num_words, train_r
                 target[0:new_size[1], 0:new_size[0]] = x
                 target = torch.tensor(target).float()
                 # append the image and the target, obtained from the corresponding words.txt line, to the X,Y lists
+
+
+                cv2.imshow("target image", np.asarray(target))
+                cv2.waitKey(0)
+                cv2.imshow("deslanted image", deslant_image(np.asarray(target)))
+                cv2.waitKey(0)
                 X.append(target)
 
-                #uncomment to view sample augmentations
-                #test_img = np.array(transform(target))
-                #cv2.imshow("Augmented Image", test_img)
-                #cv2.waitKey(0)
                 y = line_split[-1]
                 Y.append(y)
                 line_counter += 1
@@ -270,17 +275,17 @@ if __name__=="__main__":
     model_path = "../trained_models/model_tmp.chkpt"
     epoch = 0
     loss = 0
-    weight_decay = 0
+    weight_decay = 0.01
     retrain_model = False
     warm_start = False
-    model = Net(dropout=0.2).to(device)
-    n_epochs = 100
+    model = Net(dropout=0.35).to(device)
+    n_epochs = 800
     words_file = "../dataset/words.txt"
     data_dir = "../dataset/images"
     batch_size = 50
     image_size = (32, 128)
-    num_words = 50
-    train_ratio = 0.6
+    num_words = 50 #115338
+    train_ratio = 0.7
     train_set, test_set = data_loader(words_file, data_dir, batch_size, image_size, num_words, train_ratio)
     lr = 0.01
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
@@ -297,6 +302,8 @@ if __name__=="__main__":
             print("Training Epoch "+ str(epoch+1))
             if epoch >= 10:
                 lr = 0.001
+            if epoch >= 400:
+                lr = 0.0001
             if epoch >= 500:
                 lr = 0.00005
 
@@ -307,9 +314,9 @@ if __name__=="__main__":
                 torch.save({'epoch': epoch, 'loss': loss, 'model_state_dict': model.state_dict(), 'optimizer_state_dict': optimizer.state_dict()}, "../trained_models/model_optim_tmp.chkpt")
                 print("saving progress")
             optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
-        torch.save({'epoch': epoch, 'loss': loss, 'model_state_dict': model.state_dict(), 'optimizer_state_dict': optimizer.state_dict()}, "../trained_models/ADAM_2LSTM.chkpt")
+        torch.save({'epoch': epoch, 'loss': loss, 'model_state_dict': model.state_dict(), 'optimizer_state_dict': optimizer.state_dict()}, "../trained_models/DATA_AUG_DESLANT.chkpt")
     else:
-        checkpoint = torch.load("../trained_models/ADAM_2LSTM.chkpt")
+        checkpoint = torch.load("../trained_models/DATA_AUG_DESLANT.chkpt")
         model.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         epoch = checkpoint['epoch']

@@ -1,0 +1,12 @@
+\contentsline {section}{\numberline {1}Introduction}{3}
+\contentsline {section}{\numberline {2}Theory}{4}
+\contentsline {subsection}{\numberline {2.1}Convolutional Neural Networks}{4}
+\contentsline {subsection}{\numberline {2.2}Recurrent Neural Networks}{6}
+\contentsline {subsection}{\numberline {2.3}Connectionist Temporal Classification}{9}
+\contentsline {section}{\numberline {3}Methods}{13}
+\contentsline {subsection}{\numberline {3.1}Data}{13}
+\contentsline {subsection}{\numberline {3.2}Metrics}{13}
+\contentsline {subsection}{\numberline {3.3}The Model}{14}
+\contentsline {section}{\numberline {4}Results}{17}
+\contentsline {section}{\numberline {5}Discussion}{18}
+\contentsline {section}{\numberline {6}References}{19}
