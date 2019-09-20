@@ -275,10 +275,12 @@ class KfoldTrainer(object):
     def __init__(self,
                  name,
                  model_config,
+                 word_prediction,
                  dynamic_learning_rate=lambda idx: 1e-4,
                  environment=None,):
         self.__name = name
         self.__model_config = model_config
+        self.__word_prediction = word_prediction
         self.__learning_rate_adaptor = dynamic_learning_rate
         self.__environment = TrainingEnvironment() if environment is None else environment
         self.__stats = Statistics.get_instance(self.__name)
@@ -289,10 +291,10 @@ class KfoldTrainer(object):
         for loaders in loader_array:
             model = get_model_by_name(self.__model_config.name)(self.__model_config.parameters).to(device)
             total_epochs = current_epoch
-            self.train_single_model(model, loaders, total_epochs, device, word_predictor, de_en_coder, model_id)
+            self.train_single_model(model, loaders, total_epochs, device, de_en_coder, model_id)
             model_id += 1
 
-    def train_single_model(self, model, loaders, total_epochs, device, word_predictor, de_en_coder, model_id):
+    def train_single_model(self, model, loaders, total_epochs, device, de_en_coder, model_id):
         train_loader = loaders[0]
         train_eval_loader = loaders[1]
         test_loader = loaders[2]
@@ -300,15 +302,23 @@ class KfoldTrainer(object):
             enter_msg = f"Train Epoch: {epoch_idx: 4d} (total: {total_epochs + 1: 4d})"
             with TimeMeasure(enter_msg=enter_msg,
                              writer=logger.info,
-                             print_enabled=self.__print_enabled) as tm:
+                             print_enabled=True) as tm:
                 current_learning_rate = self.__learning_rate_adaptor(total_epochs)
                 loss, words = self.core_training(model, train_loader, current_learning_rate, device)
                 logger.info(f"loss: {loss}")
                 total_epochs += 1
                 if epoch_idx % self.__environment.save_interval is 0:
-                    train_metrics = evaluate_model(de_en_coder=de_en_coder, word_prediction=word_predictor, model=model, data_loader=train_eval_loader, device=device)
-                    test_metrics = evaluate_model(de_en_coder=de_en_coder, word_prediction=word_predictor, model=model, data_loader=test_loader, device=device)
-                    model_data = {"name" :f"{model.__class__.__name__}_{model_id: 03d}"}
+                    train_metrics = evaluate_model(de_en_coder=de_en_coder,
+                                                   word_prediction=self.__word_prediction,
+                                                   model=model,
+                                                   data_loader=train_eval_loader,
+                                                   device=device)
+                    test_metrics = evaluate_model(de_en_coder=de_en_coder,
+                                                  word_prediction=self.__word_prediction,
+                                                  model=model,
+                                                  data_loader=test_loader,
+                                                  device=device)
+                    model_data = {"name": f"{model.__class__.__name__}_{model_id: 03d}"}
                     self.__stats.save_per_period(total_epochs, train_metrics, test_metrics, model_data)
 
     def core_training(self, model, train_loader, learning_rate, device):
@@ -319,6 +329,8 @@ class KfoldTrainer(object):
         first_batch_words = list()
 
         for (batch_id, (feature_batch, label_batch)) in enumerate(train_loader):
+            if batch_id % (len(train_loader) / 100) == 0:
+                logger.debug(f"Batch: {batch_id:04d}")
             model.init_hidden(batch_size=feature_batch.size()[0], device=device)
             feature_batch = feature_batch.to(device)
             label_batch = [np.asarray(right_strip(list(map(int, word)), 1)) for word in

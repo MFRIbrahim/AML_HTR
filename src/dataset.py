@@ -369,6 +369,8 @@ def cv_split(dataset, n, augmentation=None):
 
         if augmentation is not None:
             augmented_set = AugmentedDataSet(train_set, augmentation)
+        else:
+            augmented_set = train_set
 
         res.append((train_set, test_set, augmented_set))
 

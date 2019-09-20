@@ -109,9 +109,17 @@ def cross_val_main(config_name):
 
         environment = TrainingEnvironment.from_config(environment_config)
 
-        trainer = KfoldTrainer(name=training_config.name, model_config=model_config, environment=environment)
-    with TimeMeasure(enter_msg="Training and evaluating...", exit_msg="Training and evaluation finished after {}.", writer=logger.debug):
-        trainer.train(loader_array=loader_array, word_predictor=word_predictor, de_en_coder=de_en_coder)
+        trainer = KfoldTrainer(name=training_config.name,
+                               word_prediction=word_predictor,
+                               model_config=model_config,
+                               environment=environment)
+
+    with TimeMeasure(enter_msg="Training and evaluating...",
+                     exit_msg="Training and evaluation finished after {}.",
+                     writer=logger.debug):
+        trainer.train(loader_array=loader_array,
+                      word_predictor=word_predictor,
+                      de_en_coder=de_en_coder)
 
 
 def epoch_main(config_name):
@@ -209,6 +217,7 @@ def run_config(config_name):
     logger.info("=" * 35 + " END " + "=" * 35)
 
 
-if __name__ == "main":
+if __name__ == "__main__":
     logger = get_htr_logger(__name__)
-    run_config("config_01")
+    print("Go")
+    run_config("config_01_cross-val")
