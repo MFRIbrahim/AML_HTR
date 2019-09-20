@@ -3,9 +3,10 @@ from torchvision import transforms
 
 from config import Configuration
 from dataset import get_data_loaders
+from dataset import get_data_loaders_cv
 from model import get_model_by_name
 from pre_processing import pre_processor
-from school import TrainingEnvironment, Trainer, evaluate_model
+from school import TrainingEnvironment, Trainer, KfoldTrainer, evaluate_model
 from statistics import Statistics
 from transformations import transformation_from_entry
 from util import WordDeEnCoder, TimeMeasure, inject, get_htr_logger
@@ -67,6 +68,49 @@ def build_augmentations(augmentations, my_locals):
         result.extend(transformations)
 
     return result
+
+
+def main2(config_name):
+    logger.info(f"Run with config '{config_name}'.")
+    with TimeMeasure(enter_msg="Setup everything", exit_msg="Setup finished after {}.", writer=logger.debug):
+        torch.manual_seed(0)
+        device = get_available_device()
+        logger.info(f"Active device: {device}")
+
+        config = Configuration(f"../configs/{config_name}.json")
+
+        prediction_config = config["prediction"]
+        data_set_config = config["data_set"]
+        data_loading_config = config["data_loading"]
+        training_config = config["training"]
+        environment_config = config["training/environment"]
+        model_config = config["model"]
+
+        # in char list we use '|' as a symbol the CTC-blank
+        de_en_coder = WordDeEnCoder(list(prediction_config.char_list))
+        word_predictor = setup_decoder_from_config(prediction_config, "eval")
+        word_predictor_debug = setup_decoder_from_config(prediction_config, "debug")
+
+        main_locals = locals()
+        transformations = build_transformations(data_loading_config.transformations, main_locals)
+        augmentations = data_loading_config.if_exists(
+            path="augmentations",
+            runner=lambda augms: build_augmentations(augms, main_locals),
+            default=None
+        )
+        augmentation = transforms.Compose(augmentations) if augmentations is not None else None
+
+        loader_array = get_data_loaders_cv(meta_path=data_set_config.meta_path,
+                                                     images_path=data_set_config.images_path,
+                                                     transformation=transforms.Compose(transformations),
+                                                     augmentation=augmentation,
+                                                     data_loading_config=data_loading_config,
+                                                     pre_processor=pre_processor(config))
+
+        environment = TrainingEnvironment.from_config(environment_config)
+
+        trainer = KfoldTrainer(model_config=model_config, environment=environment)
+        trainer.train(loader_array=loader_array, word_predictor=word_predictor, de_en_coder=de_en_coder)
 
 
 def main(config_name):
