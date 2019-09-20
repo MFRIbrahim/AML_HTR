@@ -70,7 +70,7 @@ def build_augmentations(augmentations, my_locals):
     return result
 
 
-def main2(config_name):
+def cross_val_main(config_name):
     logger.info(f"Run with config '{config_name}'.")
     with TimeMeasure(enter_msg="Setup everything", exit_msg="Setup finished after {}.", writer=logger.debug):
         torch.manual_seed(0)
@@ -114,7 +114,7 @@ def main2(config_name):
         trainer.train(loader_array=loader_array, word_predictor=word_predictor, de_en_coder=de_en_coder)
 
 
-def main(config_name):
+def epoch_main(config_name):
     logger.info(f"Run with config '{config_name}'.")
     with TimeMeasure(enter_msg="Setup everything", exit_msg="Setup finished after {}.", writer=logger.debug):
         torch.manual_seed(0)
@@ -200,8 +200,15 @@ def main(config_name):
                 trainer.load_latest_model_state_into(model)
 
 
-if __name__ == "__main__":
-    logger = get_htr_logger(__name__)
+def run_config(config_name):
     logger.info("=" * 35 + " START " + "=" * 35)
-    main("config_01")#kv_fold ANhängsel überprüfen
+    if config_name.endswith("_cross-val"):
+        cross_val_main(config_name)
+    else:
+        epoch_main(config_name)
     logger.info("=" * 35 + " END " + "=" * 35)
+
+
+if __name__ == "main":
+    logger = get_htr_logger(__name__)
+    run_config("config_01")

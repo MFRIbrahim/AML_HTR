@@ -26,14 +26,14 @@ class Statistics(object):
         with open(path, "a+", encoding="utf-8") as fp:
             print(f"{epoch:5d}\t{time:10d}\t{loss:14.10f}\t{words}", file=fp)
 
-    def save_per_period(self, epoch, train_acc, test_acc, model=FrozenDict()):
+    def save_per_period(self, epoch, train_metrics, test_metrics, model=FrozenDict()):
         path = os.path.join("statistics", self.__name, "2_period_data.txt")
         make_directories_for_file(path)
 
         with open(path, "a+", encoding="utf-8") as fp:
-            ordered_keys = sorted(list(train_acc.keys()))
-            train_data = "\t".join([f"{100 * train_acc[key]:9.6f}" for key in ordered_keys])
-            test_data = "\t".join([f"{100 * test_acc[key]:9.6f}" for key in ordered_keys])
+            ordered_keys = sorted(list(train_metrics.keys()))
+            train_data = "\t".join([f"{100 * train_metrics[key]:9.6f}" for key in ordered_keys])
+            test_data = "\t".join([f"{100 * test_metrics[key]:9.6f}" for key in ordered_keys])
             model_data = "\t".join([f"{key}" for key in model])
             msg = f"{epoch:5d}\t{train_data}\t{test_data}"
             if len(model_data.strip()) > 0:
