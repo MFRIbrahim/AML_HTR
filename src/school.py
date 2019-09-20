@@ -138,7 +138,7 @@ class Trainer(object):
                              writer=logger.info,
                              print_enabled=self.__print_enabled) as tm:
                 current_learning_rate = self.__learning_rate_adaptor(total_epochs)
-                loss, words = self.core_training(self.__model, train_loader, current_learning_rate, device)
+                loss, words = self.core_training(train_loader, current_learning_rate, device)
                 logger.info("loss: {}".format(loss))
                 total_epochs += 1
 

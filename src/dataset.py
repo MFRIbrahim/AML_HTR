@@ -266,6 +266,8 @@ def get_data_loaders(meta_path, images_path, transformation, augmentation, data_
 
         if augmentation is not None:
             augmented_data_set = AugmentedDataSet(train_data_set, augmentation)
+        else:
+            augmented_data_set = train_data_set
 
     if not loaded:
         __save_train_test_split(save_path, train_data_set, test_data_set)
