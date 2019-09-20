@@ -275,14 +275,14 @@ class KfoldTrainer(object):
         self.__learning_rate_adaptor = dynamic_learning_rate
         self.__environment = TrainingEnvironment() if environment is None else environment
 
-    def train(self, loader_array, current_epoch=0, device="cpu"):
+    def train(self, loader_array, word_predictor, de_en_coder, current_epoch=0, device="cpu"):
         logger.info("Enter training mode.")
         for loaders in loader_array:
             model = get_model_by_name(self.__model_config.name)(self.__model_config.parameters).to(device)
             total_epochs = current_epoch
-            self.train_single_model(model, loaders, total_epochs, device)
+            self.train_single_model(model, loaders, total_epochs, device, word_predictor, de_en_coder)
 
-    def train_single_model(self, model, loaders, total_epochs, device):
+    def train_single_model(self, model, loaders, total_epochs, device, word_predictor, de_en_coder):
         train_loader = loaders[0]
         test_loader = loaders[1]
         for epoch_idx in range(1, self.__environment.max_epochs + 1):
@@ -295,8 +295,9 @@ class KfoldTrainer(object):
                 logger.info(f"loss: {loss}")
                 total_epochs += 1
                 if epoch_idx % self.__environment.save_interval is 0:
-                    # TODO EVAL
-                    pass
+                    train_metrics = evaluate_model(de_en_coder=de_en_coder, word_prediction=word_predictor, model=model, data_loader=train_loader, device=device)
+                    test_metrics = evaluate_model(de_en_coder=de_en_coder, word_prediction=word_predictor, model=model, data_loader=test_loader, device=device)
+                    # TODO: save the metrics
 
     def core_training(self, model, train_loader, learning_rate, device):
         loss_fct = self.__environment.loss_function.to(device)
