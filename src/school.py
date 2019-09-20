@@ -288,7 +288,8 @@ class KfoldTrainer(object):
                     loss, words = self.core_training(model, train_loader, current_learning_rate, device)
                     total_epochs += 1
                     if epoch_idx % self.__environment.save_interval is 0:
-                        #EVAL
+                        # TODO EVAL
+                        pass
 
     def core_training(self, model, train_loader, learning_rate, device):
         loss_fct = self.__environment.loss_function.to(device)
