@@ -105,18 +105,20 @@ def optimizer_creator_by_name(name):
 class Trainer(object):
     def __init__(self,
                  name,
+                 model,
                  word_prediction,
                  dynamic_learning_rate=lambda idx: 1e-4,
                  print_enabled=True,
                  environment=None):
         self.__name = name
+        self.__model = model
         self.__word_prediction = word_prediction
         self.__learning_rate_adaptor = dynamic_learning_rate
         self.__print_enabled = print_enabled
         self.__environment = TrainingEnvironment() if environment is None else environment
-        self.model_eval = lambda: dict()
+        self.model_eval = lambda current_model: dict()
 
-    def train(self, model, train_loader, current_epoch=0, device="cpu"):
+    def train(self, train_loader, current_epoch=0, device="cpu"):
         logger.info("Enter training mode.")
         total_epochs = current_epoch
         last_save, loss = 0, None
@@ -126,7 +128,7 @@ class Trainer(object):
         if self.__environment.warm_start:
             try:
                 total_epochs, state_dict, loss = self.__load_progress()
-                model.load_state_dict(state_dict)
+                self.__model.load_state_dict(state_dict)
             except RuntimeError:
                 logger.warning("Warm start was not possible!")
 
@@ -136,40 +138,42 @@ class Trainer(object):
                              writer=logger.info,
                              print_enabled=self.__print_enabled) as tm:
                 current_learning_rate = self.__learning_rate_adaptor(total_epochs)
-                loss, words = self.core_training(model, train_loader, current_learning_rate, device)
+                loss, words = self.core_training(self.__model, train_loader, current_learning_rate, device)
                 logger.info("loss: {}".format(loss))
                 total_epochs += 1
 
                 stats.save_per_epoch(total_epochs, tm.delta, loss, words)
                 if epoch_idx % self.__environment.save_interval is 0:
                     last_save = total_epochs
-                    self.__save_progress(total_epochs, model, loss)
+                    self.__save_progress(total_epochs, self.__model, loss)
                     self.__save_period_stats(total_epochs)
 
         if last_save < total_epochs:
             logger.info("final save")
-            self.__save_progress(total_epochs, model, loss)
+            self.__save_progress(total_epochs, self.__model, loss)
             self.__save_period_stats(total_epochs)
+
+        return self.__model
 
     def __load_progress(self):
         directory = p_join("trained_models", self.__name)
         dictionary = load_latest_checkpoint(directory)
         return dictionary["total_epochs"], dictionary["model_states"], dictionary["loss"]
 
-    def core_training(self, model, train_loader, learning_rate, device):
+    def core_training(self, train_loader, learning_rate, device):
         loss_fct = self.__environment.loss_function.to(device)
-        optimizer = self.__environment.create_optimizer(model, learning_rate)
-        model.train(mode=True)
+        optimizer = self.__environment.create_optimizer(self.__model, learning_rate)
+        self.__model.train(mode=True)
         mean_loss = 0
         first_batch_words = list()
 
         for (batch_id, (feature_batch, label_batch)) in enumerate(train_loader):
-            model.init_hidden(batch_size=feature_batch.size()[0], device=device)
+            self.__model.init_hidden(batch_size=feature_batch.size()[0], device=device)
             feature_batch = feature_batch.to(device)
             label_batch = [np.asarray(right_strip(list(map(int, word)), 1)) for word in
                            word_tensor_to_list(label_batch)]
             optimizer.zero_grad()
-            model_out = model(feature_batch)
+            model_out = self.__model(feature_batch)
             ctc_input = F.log_softmax(model_out, dim=-1).to(device)
             input_lengths = torch.full(size=(len(feature_batch),),
                                        fill_value=model_out.shape[0],
@@ -212,9 +216,10 @@ class Trainer(object):
                               train_acc=accs.get("train", 0.0),
                               test_acc=accs.get("test", 0.0))
 
-    def load_latest_model_state_into(self, model):
+    def load_latest_model(self):
         total_epochs, state_dict, loss = self.__load_progress()
-        model.load_state_dict(state_dict)
+        self.__model.load_state_dict(state_dict)
+        return self.__model
 
 
 def evaluate_model(de_en_coder, word_prediction, model, data_loader, device):
