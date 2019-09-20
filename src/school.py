@@ -275,14 +275,16 @@ class KfoldTrainer(object):
         self.__learning_rate_adaptor = dynamic_learning_rate
         self.__environment = TrainingEnvironment() if environment is None else environment
 
-    def train(self, train_loaders, current_epoch=0, device="cpu"):
+    def train(self, loader_array, current_epoch=0, device="cpu"):
         logger.info("Enter training mode.")
-        for train_loader in train_loaders:
+        for loaders in loader_array:
             model = get_model_by_name(self.__model_config.name)(self.__model_config.parameters).to(device)
             total_epochs = current_epoch
-            self.train_single_model(model, train_loader, total_epochs, device)
+            self.train_single_model(model, loaders, total_epochs, device)
 
-    def train_single_model(self, model, train_loader, total_epochs, device):
+    def train_single_model(self, model, loaders, total_epochs, device):
+        train_loader = loaders[0]
+        test_loader = loaders[1]
         for epoch_idx in range(1, self.__environment.max_epochs + 1):
             enter_msg = f"Train Epoch: {epoch_idx: 4d} (total: {total_epochs + 1: 4d})"
             with TimeMeasure(enter_msg=enter_msg,
@@ -329,3 +331,10 @@ class KfoldTrainer(object):
             optimizer.step()
 
         return mean_loss / len(train_loader), first_batch_words
+
+    def __print_words_in_batch(self, ctc_input):
+        cpu_input = np.array(copy(ctc_input).detach().cpu())
+        out = self.__word_prediction(cpu_input)
+        # for i, word in enumerate(out):
+        #   logger.debug("{:02d}: '{}'".format(i, word))
+        return out
