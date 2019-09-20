@@ -8,7 +8,7 @@ from torch.nn import CTCLoss, functional as F
 from torch.optim import Adam
 
 from statistics import Statistics
-from model import Net
+from model import get_model_by_name
 from transformations import right_strip, word_tensor_to_list
 from util import TimeMeasure, save_checkpoint, load_latest_checkpoint, FrozenDict, get_htr_logger
 
@@ -277,7 +277,7 @@ class KfoldTrainer(object):
 
     def train(self, train_loader_array, current_epoch=0, device="cpu"):
         for train_loader in train_loader_array:
-            model = Net()
+            model = get_model_by_name(self.__model_config.name)(self.__model_config.parameters).to(device)
             total_epochs = current_epoch
             for epoch_idx in range(1, self.__environment.max_epochs + 1):
                 enter_msg = f"Train Epoch: {epoch_idx: 4d} (total: {total_epochs + 1: 4d})"
