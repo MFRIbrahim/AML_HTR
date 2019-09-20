@@ -275,21 +275,24 @@ class KfoldTrainer(object):
         self.__learning_rate_adaptor = dynamic_learning_rate
         self.__environment = TrainingEnvironment() if environment is None else environment
 
-    def train(self, train_loader_array, current_epoch=0, device="cpu"):
-        for train_loader in train_loader_array:
+    def train(self, train_loaders, current_epoch=0, device="cpu"):
+        for train_loader in train_loaders:
             model = get_model_by_name(self.__model_config.name)(self.__model_config.parameters).to(device)
             total_epochs = current_epoch
-            for epoch_idx in range(1, self.__environment.max_epochs + 1):
-                enter_msg = f"Train Epoch: {epoch_idx: 4d} (total: {total_epochs + 1: 4d})"
-                with TimeMeasure(enter_msg=enter_msg,
-                                 writer=logger.info,
-                                 print_enabled=self.__print_enabled) as tm:
-                    current_learning_rate = self.__learning_rate_adaptor(total_epochs)
-                    loss, words = self.core_training(model, train_loader, current_learning_rate, device)
-                    total_epochs += 1
-                    if epoch_idx % self.__environment.save_interval is 0:
-                        # TODO EVAL
-                        pass
+            self.train_single_model(model, train_loader, total_epochs, device)
+
+    def train_single_model(self, model, train_loader, total_epochs, device):
+        for epoch_idx in range(1, self.__environment.max_epochs + 1):
+            enter_msg = f"Train Epoch: {epoch_idx: 4d} (total: {total_epochs + 1: 4d})"
+            with TimeMeasure(enter_msg=enter_msg,
+                             writer=logger.info,
+                             print_enabled=self.__print_enabled) as tm:
+                current_learning_rate = self.__learning_rate_adaptor(total_epochs)
+                loss, words = self.core_training(model, train_loader, current_learning_rate, device)
+                total_epochs += 1
+                if epoch_idx % self.__environment.save_interval is 0:
+                    # TODO EVAL
+                    pass
 
     def core_training(self, model, train_loader, learning_rate, device):
         loss_fct = self.__environment.loss_function.to(device)
