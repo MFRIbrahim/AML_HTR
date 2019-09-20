@@ -276,6 +276,7 @@ class KfoldTrainer(object):
         self.__environment = TrainingEnvironment() if environment is None else environment
 
     def train(self, train_loaders, current_epoch=0, device="cpu"):
+        logger.info("Enter training mode.")
         for train_loader in train_loaders:
             model = get_model_by_name(self.__model_config.name)(self.__model_config.parameters).to(device)
             total_epochs = current_epoch
@@ -289,6 +290,7 @@ class KfoldTrainer(object):
                              print_enabled=self.__print_enabled) as tm:
                 current_learning_rate = self.__learning_rate_adaptor(total_epochs)
                 loss, words = self.core_training(model, train_loader, current_learning_rate, device)
+                logger.info(f"loss: {loss}")
                 total_epochs += 1
                 if epoch_idx % self.__environment.save_interval is 0:
                     # TODO EVAL
