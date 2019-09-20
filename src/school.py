@@ -8,6 +8,7 @@ from torch.nn import CTCLoss, functional as F
 from torch.optim import Adam
 
 from statistics import Statistics
+from model import Net
 from transformations import right_strip, word_tensor_to_list
 from util import TimeMeasure, save_checkpoint, load_latest_checkpoint, FrozenDict, get_htr_logger
 
@@ -266,4 +267,59 @@ def __calculate_word_error_rate(single_words_pred, single_words_target):
 
 
 class KfoldTrainer(object):
-    pass
+    def __init__(self,
+                 model_config,
+                 dynamic_learning_rate=lambda idx: 1e-4,
+                 environment=None,):
+        self.__model_config = model_config
+        self.__learning_rate_adaptor = dynamic_learning_rate
+        self.__environment = TrainingEnvironment() if environment is None else environment
+
+    def train(self, train_loader_array, current_epoch=0, device="cpu"):
+        for train_loader in train_loader_array:
+            model = Net()
+            total_epochs = current_epoch
+            for epoch_idx in range(1, self.__environment.max_epochs + 1):
+                enter_msg = f"Train Epoch: {epoch_idx: 4d} (total: {total_epochs + 1: 4d})"
+                with TimeMeasure(enter_msg=enter_msg,
+                                 writer=logger.info,
+                                 print_enabled=self.__print_enabled) as tm:
+                    current_learning_rate = self.__learning_rate_adaptor(total_epochs)
+                    loss, words = self.core_training(model, train_loader, current_learning_rate, device)
+                    total_epochs += 1
+                    if epoch_idx % self.__environment.save_interval is 0:
+                        #EVAL
+
+    def core_training(self, model, train_loader, learning_rate, device):
+        loss_fct = self.__environment.loss_function.to(device)
+        optimizer = self.__environment.create_optimizer(model, learning_rate)
+        model.train(mode=True)
+        mean_loss = 0
+        first_batch_words = list()
+
+        for (batch_id, (feature_batch, label_batch)) in enumerate(train_loader):
+            model.init_hidden(batch_size=feature_batch.size()[0], device=device)
+            feature_batch = feature_batch.to(device)
+            label_batch = [np.asarray(right_strip(list(map(int, word)), 1)) for word in
+                           word_tensor_to_list(label_batch)]
+            optimizer.zero_grad()
+            model_out = model(feature_batch)
+            ctc_input = F.log_softmax(model_out, dim=-1).to(device)
+            input_lengths = torch.full(size=(len(feature_batch),),
+                                       fill_value=model_out.shape[0],
+                                       dtype=torch.long
+                                       ).to(device)
+            ctc_target = np.concatenate(label_batch, axis=0)  # TODO: Check axis
+            target_lengths = [len(w) for w in label_batch]
+            target_lengths = torch.Tensor(target_lengths).to(device).type(torch.long)
+            ctc_target = torch.Tensor(ctc_target).to(device).type(torch.long)
+
+            if batch_id == 0:
+                first_batch_words = self.__print_words_in_batch(ctc_input)
+
+            loss = loss_fct(ctc_input, ctc_target, input_lengths, target_lengths)
+            mean_loss += loss.item()
+            loss.backward()
+            optimizer.step()
+
+        return mean_loss / len(train_loader), first_batch_words
