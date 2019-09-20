@@ -265,16 +265,17 @@ def get_data_loaders(meta_path, images_path, transformation, augmentation, data_
             train_data_set, test_data_set = random_split(data_set, (train_size, test_size))
 
         if augmentation is not None:
-            train_data_set = AugmentedDataSet(train_data_set, augmentation)
+            augmented_data_set = AugmentedDataSet(train_data_set, augmentation)
 
     if not loaded:
         __save_train_test_split(save_path, train_data_set, test_data_set)
 
     with TimeMeasure(enter_msg="Init data loader", writer=logger.debug):
-        train_loader = DataLoader(train_data_set, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=False)
+        train_loader = DataLoader(augmented_data_set, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=False)
+        train_eval_loader = DataLoader(train_data_set, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=False)
         test_loader = DataLoader(test_data_set, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=False)
 
-    return train_loader, test_loader
+    return train_loader, train_eval_loader, test_loader
 
 
 def __save_train_test_split(path, train_data_set, test_data_set):

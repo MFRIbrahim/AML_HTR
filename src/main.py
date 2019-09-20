@@ -25,11 +25,11 @@ def get_available_device():
 
 def dynamic_learning_rate(epoch):
     if epoch < 10:
-        return 0.01
-    elif epoch >= 10:
-        return 0.001
+        return 1e-2
+    elif epoch < 250:
+        return 1e-3
     else:
-        return 0.00005
+        return 1e-4
 
 
 def setup_decoder_from_config(config, category):
@@ -101,7 +101,7 @@ def main(config_name):
         )
         augmentation = transforms.Compose(augmentations) if augmentations is not None else None
 
-        train_loader, test_loader = get_data_loaders(meta_path=data_set_config.meta_path,
+        train_loader, train_eval_loader, test_loader = get_data_loaders(meta_path=data_set_config.meta_path,
                                                      images_path=data_set_config.images_path,
                                                      transformation=transforms.Compose(transformations),
                                                      augmentation=augmentation,
