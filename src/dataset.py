@@ -297,10 +297,11 @@ def get_data_loaders_cv(meta_path,
 
     with TimeMeasure(enter_msg="Init data loader", writer=logger.debug):
         loader_array = []
-        for train_set, test_set in train_test_array:
-            train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=False)
+        for train_set, test_set, augmented_set in train_test_array:
+            train_eval_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=False)
             test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=False)
-            loader_array.append((train_loader, test_loader))
+            train_loader = DataLoader(augmented_set, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=False)
+            loader_array.append((train_loader, train_eval_loader, test_loader))
 
     return loader_array
 
@@ -364,8 +365,8 @@ def cv_split(dataset, n, augmentation=None):
         test_set = Subset(dataset, test_index)
 
         if augmentation is not None:
-            train_set = AugmentedDataSet(train_set, augmentation)
+            augmented_set = AugmentedDataSet(train_set, augmentation)
 
-        res.append((train_set, test_set))
+        res.append((train_set, test_set, augmented_set))
 
     return res

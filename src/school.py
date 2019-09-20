@@ -268,23 +268,29 @@ def __calculate_word_error_rate(single_words_pred, single_words_target):
 
 class KfoldTrainer(object):
     def __init__(self,
+                 name,
                  model_config,
                  dynamic_learning_rate=lambda idx: 1e-4,
                  environment=None,):
+        self.__name = name
         self.__model_config = model_config
         self.__learning_rate_adaptor = dynamic_learning_rate
         self.__environment = TrainingEnvironment() if environment is None else environment
+        self.__stats = Statistics.get_instance(self.__name)
 
     def train(self, loader_array, word_predictor, de_en_coder, current_epoch=0, device="cpu"):
         logger.info("Enter training mode.")
+        model_id = 0
         for loaders in loader_array:
             model = get_model_by_name(self.__model_config.name)(self.__model_config.parameters).to(device)
             total_epochs = current_epoch
-            self.train_single_model(model, loaders, total_epochs, device, word_predictor, de_en_coder)
+            self.train_single_model(model, loaders, total_epochs, device, word_predictor, de_en_coder, model_id)
+            model_id += 1
 
-    def train_single_model(self, model, loaders, total_epochs, device, word_predictor, de_en_coder):
+    def train_single_model(self, model, loaders, total_epochs, device, word_predictor, de_en_coder, model_id):
         train_loader = loaders[0]
-        test_loader = loaders[1]
+        train_eval_loader = loaders[1]
+        test_loader = loaders[2]
         for epoch_idx in range(1, self.__environment.max_epochs + 1):
             enter_msg = f"Train Epoch: {epoch_idx: 4d} (total: {total_epochs + 1: 4d})"
             with TimeMeasure(enter_msg=enter_msg,
@@ -295,9 +301,10 @@ class KfoldTrainer(object):
                 logger.info(f"loss: {loss}")
                 total_epochs += 1
                 if epoch_idx % self.__environment.save_interval is 0:
-                    train_metrics = evaluate_model(de_en_coder=de_en_coder, word_prediction=word_predictor, model=model, data_loader=train_loader, device=device)
+                    train_metrics = evaluate_model(de_en_coder=de_en_coder, word_prediction=word_predictor, model=model, data_loader=train_eval_loader, device=device)
                     test_metrics = evaluate_model(de_en_coder=de_en_coder, word_prediction=word_predictor, model=model, data_loader=test_loader, device=device)
-                    # TODO: save the metrics
+                    model_data = {"name" :f"{model.__class__.__name__}_{model_id: 03d}"}
+                    self.__stats.save_per_period(total_epochs, train_metrics, test_metrics, model_data)
 
     def core_training(self, model, train_loader, learning_rate, device):
         loss_fct = self.__environment.loss_function.to(device)

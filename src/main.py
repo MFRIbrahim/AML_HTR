@@ -101,15 +101,16 @@ def main2(config_name):
         augmentation = transforms.Compose(augmentations) if augmentations is not None else None
 
         loader_array = get_data_loaders_cv(meta_path=data_set_config.meta_path,
-                                                     images_path=data_set_config.images_path,
-                                                     transformation=transforms.Compose(transformations),
-                                                     augmentation=augmentation,
-                                                     data_loading_config=data_loading_config,
-                                                     pre_processor=pre_processor(config))
+                                           images_path=data_set_config.images_path,
+                                           transformation=transforms.Compose(transformations),
+                                           augmentation=augmentation,
+                                           data_loading_config=data_loading_config,
+                                           pre_processor=pre_processor(config))
 
         environment = TrainingEnvironment.from_config(environment_config)
 
-        trainer = KfoldTrainer(model_config=model_config, environment=environment)
+        trainer = KfoldTrainer(name=training_config.name, model_config=model_config, environment=environment)
+    with TimeMeasure(enter_msg="Training and evaluating...", exit_msg="Training and evaluation finished after {}.", writer=logger.debug):
         trainer.train(loader_array=loader_array, word_predictor=word_predictor, de_en_coder=de_en_coder)
 
 
@@ -202,5 +203,5 @@ def main(config_name):
 if __name__ == "__main__":
     logger = get_htr_logger(__name__)
     logger.info("=" * 35 + " START " + "=" * 35)
-    main("config_01")
+    main("config_01")#kv_fold ANhängsel überprüfen
     logger.info("=" * 35 + " END " + "=" * 35)
