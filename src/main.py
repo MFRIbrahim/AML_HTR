@@ -219,5 +219,4 @@ def run_config(config_name):
 
 if __name__ == "__main__":
     logger = get_htr_logger(__name__)
-    print("Go")
     run_config("config_01_cross-val")
