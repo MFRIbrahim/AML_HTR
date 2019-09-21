@@ -26,11 +26,11 @@ def get_available_device():
 
 def dynamic_learning_rate(epoch):
     if epoch < 10:
-        return 0.01
-    elif epoch >= 10:
-        return 0.001
+        return 1e-2
+    elif epoch < 250:
+        return 1e-3
     else:
-        return 0.00005
+        return 1e-4
 
 
 def setup_decoder_from_config(config, category):

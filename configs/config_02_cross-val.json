@@ -39,11 +39,32 @@
         }
       }
     ],
-    "save_path": "../dataset_splits/Standard_Net-small_500.sav",
-    "restore_path": "../dataset_splits/Standard_Net-small_500.sav"
+    "augmentations": [
+      {
+        "pre": "TensorToPIL",
+        "transformations": [
+          "RandomRotateAndTranslate",
+          "RandomJitter",
+          "RandomPerspective"
+        ],
+        "post": {
+          "name": "ToTensor",
+          "parameters": {
+            "char_to_int": "locals://de_en_coder/char_to_idx"
+          }
+        }
+      },
+      {
+        "transformations": [
+          "RandomErasing"
+        ]
+      }
+    ],
+    "save_path": "../dataset_splits/Standard_Net-small_500_augmentations.sav",
+    "restore_path": "../dataset_splits/Standard_Net-small_500_augmentations.sav"
   },
   "training": {
-    "name": "Standard_Net-small_500",
+    "name": "Standard_Net-small_500_augmentations",
     "retrain": true,
     "environment": {
       "epochs": 150,
