@@ -318,7 +318,7 @@ class KfoldTrainer(object):
                                                   model=model,
                                                   data_loader=test_loader,
                                                   device=device)
-                    model_data = {"name": f"{model.__class__.__name__}_{model_id: 03d}"}
+                    model_data = {"name": f"{model.__class__.__name__}_{model_id:03d}"}
                     self.__stats.save_per_period(total_epochs, train_metrics, test_metrics, model_data)
 
     def core_training(self, model, train_loader, learning_rate, device):
@@ -360,6 +360,6 @@ class KfoldTrainer(object):
     def __print_words_in_batch(self, ctc_input):
         cpu_input = np.array(copy(ctc_input).detach().cpu())
         out = self.__word_prediction(cpu_input)
-        # for i, word in enumerate(out):
-        #   logger.debug("{:02d}: '{}'".format(i, word))
+        for i, word in enumerate(out):
+           logger.debug("{:02d}: '{}'".format(i, word))
         return out
