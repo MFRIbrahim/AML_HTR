@@ -1,0 +1,30 @@
+\relax 
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{3}}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Example of different levels of difficulty for handwritten text recognition. The upper example shows clear separation and writing of the individual characters while the last one shows connected and overlapping characters that are far away from their standard form.\relax }}{3}}
+\@writefile{toc}{\contentsline {section}{\numberline {2}Theory}{4}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Convolutional Neural Networks}{4}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces The forward pass of the convolutional layer. On the left is the input with the size 7x7x3. It is padded with a one pixel thick border of zeros. In this graph, the depth dimension or number of channels/filters is depicted by stacking the matrices above one another. In the middle are the two filters applied to the input, in this case we have a filter size of 3x3. This gives us an output of size 3x3x2. The red squares and the black lines show the the entries of the input and the filters applied to those entries to calculate the respective output entry. \relax }}{5}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces The pooling operation. On the left is one depth slice of an input with width and height equal to 4. The pooling filter in this case has size 2x2 and stride 2 which effectively means that 75\text  {\%} of the image information is discarded.\relax }}{6}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Recurrent Neural Networks}{6}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Vanilla RNN visualization. f denotes the non-linear function with parameters W, h is the hidden state, x is the input and y is the output. The upper image is a visualization expressing the feedback nature of the RNN. The lower image elucidates the sequential nature of the RNN by arranging the RNN at different time steps next to itself.\relax }}{7}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces LSTM Visualization. Hidden state, input and output are shown as before. The purple rectangles are neural network layers that use a sigmoid or tanh function. The brown rectangle and brown circles are point wise operations of multiplication 'X', addition '+' or a tanh function. The dark green circles are the cell state and the red square is the function used to get a desired output like for example a class score.\relax }}{8}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Connectionist Temporal Classification}{9}}
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces RNN output matrix. Only the first four letters and first three time steps are shown. The blank symbol '-' is also part of the output and has a probability for each time step. In this case the word of the input image could have been more towards the left border of the image since this example output shows high probability for the respective letters of the word appearing right at the start.\relax }}{10}}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces RNN Output Matrix.\relax }}{11}}
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Beam Search visualization with a tree graph. The red circles are the candidate extensions and the blue circles are the current guesses. Empty circles stand for empty strings. The dotted lines stand for the output to which the current guess plus the candidate extension map to. In each step we take the 3 most probable extended words. When multiple alignments map to one output (more than 3 circles like in Iteration 2 and 3) the probabilities are summed and summarized under one new guess. \relax }}{12}}
+\@writefile{toc}{\contentsline {section}{\numberline {3}Methods}{13}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Data}{13}}
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces Example of a transformation of two images. The upper image shows a random erasing of pixels and the lower image shows a perspective shift. Both images were deslanted.\relax }}{13}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Metrics}{13}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}The Model}{14}}
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Neural Network architecture of the base line model.\relax }}{14}}
+\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces CNN part of the model. The first cube on the left represents the input of size 1x32x128 (channels x height x width) and the last cube on the right represents the output of size 256x1x32.\relax }}{15}}
+\@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces Transformation through the model layers. In the top left is the input image and in the bottom left is the RNN output matrix after it was projected onto 80 characters.\relax }}{16}}
+\@writefile{toc}{\contentsline {section}{\numberline {4}Results}{17}}
+\@writefile{toc}{\contentsline {section}{\numberline {5}Discussion}{18}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Text Line Recognition}{18}}
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Example of a Neural Network architecture capable of recognizing text lines.\relax }}{18}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Deeper Network}{18}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Multidimensional LSTM}{19}}
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Example of a Neural Network architecture with a MDLSTM. Note that the vertical dimension was not reduced to 1 with the CNN layers, rather it was used after the LSTM to calculate an average of the output scores of the LSTM.\relax }}{20}}
+\@writefile{toc}{\contentsline {section}{\numberline {6}References}{21}}
