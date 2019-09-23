@@ -331,11 +331,13 @@ class KfoldTrainer(object):
         for (batch_id, (feature_batch, label_batch)) in enumerate(train_loader):
             if batch_id % (len(train_loader) / 100) == 0:
                 logger.debug(f"Batch: {batch_id:04d}")
+
             model.init_hidden(batch_size=feature_batch.size()[0], device=device)
             feature_batch = feature_batch.to(device)
             label_batch = [np.asarray(right_strip(list(map(int, word)), 1)) for word in
                            word_tensor_to_list(label_batch)]
             optimizer.zero_grad()
+
             model_out = model(feature_batch)
             ctc_input = F.log_softmax(model_out, dim=-1).to(device)
             input_lengths = torch.full(size=(len(feature_batch),),

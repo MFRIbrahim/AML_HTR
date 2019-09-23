@@ -119,7 +119,8 @@ def cross_val_main(config_name):
                      writer=logger.debug):
         trainer.train(loader_array=loader_array,
                       word_predictor=word_predictor,
-                      de_en_coder=de_en_coder)
+                      de_en_coder=de_en_coder,
+                      device=get_available_device())
 
 
 def epoch_main(config_name):
