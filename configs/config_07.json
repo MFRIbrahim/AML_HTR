@@ -12,7 +12,7 @@
   },
   "data_set": {
     "meta_path": "../dataset/sentences.txt",
-    "images_path": "../dataset/images_sentences/sentences",
+    "images_path": "../dataset/sentences",
     "max_word_length": 100,
     "pre_processor": {
       "name": "Deslant"
@@ -43,8 +43,8 @@
         }
       }
     ],
-    "save_path": "../dataset_splits/Standard_Net-small_500.sav",
-    "restore_path": "../dataset_splits/Standard_Net-small_500.sav"
+    "save_path": "../dataset_splits/Standard_Net-big_500.sav",
+    "restore_path": "../dataset_splits/Standard_Net-big_500.sav"
   },
   "training": {
     "name": "Standard_Net-big_500",

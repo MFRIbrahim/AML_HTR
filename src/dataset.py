@@ -93,9 +93,8 @@ class WordsDataSet(Dataset):
                         raise(ValueError("Word too long"))
 
                     for i in range(len(stripped)):
-                        if i > 0:
-                            if stripped[i-1] == stripped[i]:
-                                num_chars += 1
+                        if i > 0 and stripped[i - 1] == stripped[i]:
+                            num_chars += 1
                     if num_chars > self.__max_word_length:
                         raise(ValueError("Word too long"))
 
@@ -267,7 +266,11 @@ def get_data_loaders(meta_path, images_path, transformation, augmentation, data_
     with TimeMeasure(enter_msg="Begin initialization of data set.",
                      exit_msg="Finished initialization of data set after {}.",
                      writer=logger.debug):
-        data_set = WordsDataSet(meta_path, images_path, transform=transformation, pre_processor=pre_processor, max_word_length=max_word_length)
+        data_set = WordsDataSet(meta_path,
+                                images_path,
+                                transform=transformation,
+                                pre_processor=pre_processor,
+                                max_word_length=max_word_length)
 
     with TimeMeasure(enter_msg="Splitting data set", writer=logger.debug):
         if restore_path is not None and os.path.exists(restore_path):
@@ -288,9 +291,21 @@ def get_data_loaders(meta_path, images_path, transformation, augmentation, data_
         __save_train_test_split(save_path, train_data_set, test_data_set)
 
     with TimeMeasure(enter_msg="Init data loader", writer=logger.debug):
-        train_loader = DataLoader(augmented_data_set, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=False)
-        train_eval_loader = DataLoader(train_data_set, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=False)
-        test_loader = DataLoader(test_data_set, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=False)
+        train_loader = DataLoader(augmented_data_set,
+                                  batch_size=batch_size,
+                                  shuffle=True,
+                                  num_workers=8,
+                                  drop_last=False)
+        train_eval_loader = DataLoader(train_data_set,
+                                       batch_size=batch_size,
+                                       shuffle=True,
+                                       num_workers=8,
+                                       drop_last=False)
+        test_loader = DataLoader(test_data_set,
+                                 batch_size=batch_size,
+                                 shuffle=True,
+                                 num_workers=8,
+                                 drop_last=False)
 
     return train_loader, train_eval_loader, test_loader
 

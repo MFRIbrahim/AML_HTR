@@ -44,6 +44,7 @@ def setup_decoder_from_config(config, category):
 
     return decoder(parameters)
 
+
 def build_transformations(transformations, my_locals):
     return [transformation_from_entry(entry, my_locals) for entry in transformations]
 
@@ -88,6 +89,7 @@ def build_model_evaluation(word_predictor, evals, de_en_coder, device):
         return result
 
     return lambda current_model: run_model_evaluation(current_model)
+
 
 def cross_val_main(config_name):
     logger.info(f"Run with config '{config_name}'.")
@@ -175,11 +177,13 @@ def epoch_main(config_name):
         augmentation = transforms.Compose(augmentations) if augmentations is not None else None
 
         train_loader, train_eval_loader, test_loader = get_data_loaders(meta_path=data_set_config.meta_path,
-                                                     images_path=data_set_config.images_path,
-                                                     transformation=transforms.Compose(transformations),
-                                                     augmentation=augmentation,
-                                                     data_loading_config=data_loading_config,
-                                                     pre_processor=pre_processor(config))
+                                                                        images_path=data_set_config.images_path,
+                                                                        transformation=transforms.Compose(
+                                                                            transformations),
+                                                                        augmentation=augmentation,
+                                                                        data_loading_config=data_loading_config,
+                                                                        pre_processor=pre_processor(config),
+                                                                        max_word_length=data_set_config("max_word_length"))
 
         environment = TrainingEnvironment.from_config(environment_config)
 
@@ -223,4 +227,4 @@ def run_config(config_name):
 
 if __name__ == "__main__":
     logger = get_htr_logger(__name__)
-    run_config("config_05")
+    run_config("config_07")
