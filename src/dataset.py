@@ -88,15 +88,7 @@ class WordsDataSet(Dataset):
                 try:
                     img, word = self[idx]
                     stripped = right_strip(list(map(int, word)), 1)
-                    num_chars = len(stripped)
-                    if num_chars > self.__max_word_length:
-                        raise(ValueError("Word too long"))
-
-                    for i in range(len(stripped)):
-                        if i > 0 and stripped[i - 1] == stripped[i]:
-                            num_chars += 1
-                    if num_chars > self.__max_word_length:
-                        raise(ValueError("Word too long"))
+                    self.__check_word_length(stripped)
 
                 except (cv2.error, ValueError) as e:
                     logger.error(f"Corrupted file at index: {idx}")
@@ -107,6 +99,17 @@ class WordsDataSet(Dataset):
 
         logger.info(f"WordsDataSet - Health Check: {len(to_delete)} indices={to_delete} not readable.")
         self.__save_delete_indices(to_delete)
+
+    def __check_word_length(self, stripped):
+        num_chars = len(stripped)
+        if num_chars > self.__max_word_length:
+            raise (ValueError("Word too long"))
+
+        for i in range(len(stripped)):
+            if i > 0 and stripped[i - 1] == stripped[i]:
+                num_chars += 1
+        if num_chars > self.__max_word_length:
+            raise (ValueError("Word too long"))
 
     def __create_statistics(self):
         min_length, max_length, summed_length = np.inf, 0, 0
