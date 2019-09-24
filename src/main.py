@@ -44,7 +44,6 @@ def setup_decoder_from_config(config, category):
 
     return decoder(parameters)
 
-
 def build_transformations(transformations, my_locals):
     return [transformation_from_entry(entry, my_locals) for entry in transformations]
 
@@ -69,6 +68,26 @@ def build_augmentations(augmentations, my_locals):
 
     return result
 
+
+def build_model_evaluation(word_predictor, evals, de_en_coder, device):
+    def run_model_evaluation(current_model):
+        with TimeMeasure(enter_msg="Evaluate model:",
+                         exit_msg="Evaluation finished after {}.",
+                         writer=logger.debug):
+            result = dict()
+            for name, loader in evals:
+                metrics = evaluate_model(word_prediction=word_predictor,
+                                         de_en_coder=de_en_coder,
+                                         model=current_model,
+                                         data_loader=loader,
+                                         device=device
+                                         )
+                for k in metrics.keys():
+                    logger.debug(f"{name} {k}: {metrics[k]:7.4f}")
+                result[name] = metrics
+        return result
+
+    return lambda current_model: run_model_evaluation(current_model)
 
 def cross_val_main(config_name):
     logger.info(f"Run with config '{config_name}'.")
@@ -155,7 +174,7 @@ def epoch_main(config_name):
         )
         augmentation = transforms.Compose(augmentations) if augmentations is not None else None
 
-        train_loader, test_loader = get_data_loaders(meta_path=data_set_config.meta_path,
+        train_loader, train_eval_loader, test_loader = get_data_loaders(meta_path=data_set_config.meta_path,
                                                      images_path=data_set_config.images_path,
                                                      transformation=transforms.Compose(transformations),
                                                      augmentation=augmentation,
@@ -164,8 +183,9 @@ def epoch_main(config_name):
 
         environment = TrainingEnvironment.from_config(environment_config)
 
-        trainer = Trainer(training_config.name,
-                          word_predictor_debug,
+        trainer = Trainer(name=training_config.name,
+                          model=model,
+                          word_prediction=word_predictor_debug,
                           dynamic_learning_rate=dynamic_learning_rate,
                           environment=environment
                           )
@@ -175,24 +195,7 @@ def epoch_main(config_name):
         my_locals = locals()
         evals = [(eval_obj["name"], inject(eval_obj["data_loader"], my_locals)) for eval_obj in config("evaluation")]
 
-    def run_model_evaluation():
-        with TimeMeasure(enter_msg="Evaluate model:",
-                         exit_msg="Evaluation finished after {}.",
-                         writer=logger.debug):
-            result = dict()
-            for name, loader in evals:
-                metrics = evaluate_model(word_prediction=word_predictor,
-                                         de_en_coder=de_en_coder,
-                                         model=model,
-                                         data_loader=loader,
-                                         device=device
-                                         )
-                for k in metrics.keys():
-                    logger.debug(f"{name} {k}: {metrics[k]:7.4f}")
-                result[name] = metrics
-        return result
-
-    trainer.model_eval = run_model_evaluation
+    trainer.model_eval = build_model_evaluation(word_predictor, evals, de_en_coder, device)
 
     with TimeMeasure(enter_msg="Get trained model.",
                      exit_msg="Obtained trained model after {}.",
@@ -201,12 +204,12 @@ def epoch_main(config_name):
             with TimeMeasure(enter_msg="Begin Training.",
                              exit_msg="Finished complete training after {}.",
                              writer=logger.debug):
-                trainer.train(model, train_loader, device=device)
+                model = trainer.train(train_loader, device=device)
         else:
             with TimeMeasure(enter_msg="Load pre-trained model.",
                              exit_msg="Finished loading after {}.",
                              writer=logger.debug):
-                trainer.load_latest_model_state_into(model)
+                model = trainer.load_latest_model()
 
 
 def run_config(config_name):
@@ -220,4 +223,4 @@ def run_config(config_name):
 
 if __name__ == "__main__":
     logger = get_htr_logger(__name__)
-    run_config("config_02_cross-val")
+    run_config("config_05")

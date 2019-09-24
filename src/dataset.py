@@ -19,13 +19,14 @@ logger = logging.getLogger(__name__)
 class WordsDataSet(Dataset):
     __health_state = "health_state{}.json"
 
-    def __init__(self, meta_file, root_dir, transform=None, pre_processor=None):
+    def __init__(self, meta_file, root_dir, transform=None, pre_processor=None, max_word_length=32):
         self.__meta_file = meta_file
         self.__words = list()
         self.__root_dir = root_dir
         self.__transform = transform
         self.__statistics = None
         self.__pre_processor = pre_processor
+        self.__max_word_length = max_word_length
 
         if self.__pre_processor is None:
             logger.info("No pre-processor selected.")
@@ -88,14 +89,14 @@ class WordsDataSet(Dataset):
                     img, word = self[idx]
                     stripped = right_strip(list(map(int, word)), 1)
                     num_chars = len(stripped)
-                    if num_chars > 32:
+                    if num_chars > self.__max_word_length:
                         raise(ValueError("Word too long"))
 
                     for i in range(len(stripped)):
                         if i > 0:
                             if stripped[i-1] == stripped[i]:
                                 num_chars += 1
-                    if num_chars > 32:
+                    if num_chars > self.__max_word_length:
                         raise(ValueError("Word too long"))
 
                 except (cv2.error, ValueError) as e:
@@ -257,7 +258,7 @@ class WordsMetaData(object):
         return WordsMetaData(wid, state, gray_level, box, pos_tag, transcription)
 
 
-def get_data_loaders(meta_path, images_path, transformation, augmentation, data_loading_config, pre_processor=None):
+def get_data_loaders(meta_path, images_path, transformation, augmentation, data_loading_config, pre_processor=None, max_word_length=32):
     relative_train_size = data_loading_config.train_size
     batch_size = data_loading_config.batch_size
     restore_path = data_loading_config.get("restore_path", default=None)
@@ -266,7 +267,7 @@ def get_data_loaders(meta_path, images_path, transformation, augmentation, data_
     with TimeMeasure(enter_msg="Begin initialization of data set.",
                      exit_msg="Finished initialization of data set after {}.",
                      writer=logger.debug):
-        data_set = WordsDataSet(meta_path, images_path, transform=transformation, pre_processor=pre_processor)
+        data_set = WordsDataSet(meta_path, images_path, transform=transformation, pre_processor=pre_processor, max_word_length=max_word_length)
 
     with TimeMeasure(enter_msg="Splitting data set", writer=logger.debug):
         if restore_path is not None and os.path.exists(restore_path):
