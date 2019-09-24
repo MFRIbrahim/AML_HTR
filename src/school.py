@@ -304,7 +304,7 @@ class KfoldTrainer(object):
                              writer=logger.info,
                              print_enabled=True) as tm:
                 current_learning_rate = self.__learning_rate_adaptor(total_epochs)
-                loss, words = self.core_training(model, train_loader, current_learning_rate, device)
+                loss, words = self.core_training(model, train_loader, current_learning_rate, device, de_en_coder)
                 logger.info(f"loss: {loss}")
                 total_epochs += 1
                 if epoch_idx % self.__environment.save_interval is 0:
@@ -321,21 +321,21 @@ class KfoldTrainer(object):
                     model_data = {"name": f"{model.__class__.__name__}_{model_id:03d}"}
                     self.__stats.save_per_period(total_epochs, train_metrics, test_metrics, model_data)
 
-    def core_training(self, model, train_loader, learning_rate, device):
+    def core_training(self, model, train_loader, learning_rate, device, de_en_coder):
         loss_fct = self.__environment.loss_function.to(device)
         optimizer = self.__environment.create_optimizer(model, learning_rate)
         model.train(mode=True)
         mean_loss = 0
         first_batch_words = list()
 
-        for (batch_id, (feature_batch, label_batch)) in enumerate(train_loader):
+        for (batch_id, (feature_batch, word_batch)) in enumerate(train_loader):
             if batch_id % (len(train_loader) / 100) == 0:
                 logger.debug(f"Batch: {batch_id:04d}")
 
             model.init_hidden(batch_size=feature_batch.size()[0], device=device)
             feature_batch = feature_batch.to(device)
             label_batch = [np.asarray(right_strip(list(map(int, word)), 1)) for word in
-                           word_tensor_to_list(label_batch)]
+                           word_tensor_to_list(word_batch)]
             optimizer.zero_grad()
 
             model_out = model(feature_batch)
@@ -353,6 +353,9 @@ class KfoldTrainer(object):
                 first_batch_words = self.__print_words_in_batch(ctc_input)
 
             loss = loss_fct(ctc_input, ctc_target, input_lengths, target_lengths)
+            if not loss < 1e38:
+                logger.debug("Loss bigger than threshold 1e38. Skipping back propagation")
+                continue
             mean_loss += loss.item()
             loss.backward()
             optimizer.step()

@@ -11,6 +11,7 @@ from torch.utils.data.dataset import Subset
 from sklearn.model_selection import KFold
 
 from util import TimeMeasure, is_file, make_directories_for_file
+from transformations import right_strip
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +85,19 @@ class WordsDataSet(Dataset):
         else:
             for idx, word_meta in enumerate(self.__words):
                 try:
-                    self[idx]
+                    img, word = self[idx]
+                    stripped = right_strip(list(map(int, word)), 1)
+                    num_chars = len(stripped)
+                    if num_chars > 32:
+                        raise(ValueError("Word too long"))
+
+                    for i in range(len(stripped)):
+                        if i > 0:
+                            if stripped[i-1] == stripped[i]:
+                                num_chars += 1
+                    if num_chars > 32:
+                        raise(ValueError("Word too long"))
+
                 except (cv2.error, ValueError) as e:
                     logger.error(f"Corrupted file at index: {idx}")
                     to_delete.append(idx)

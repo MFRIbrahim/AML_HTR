@@ -73,7 +73,7 @@ def build_augmentations(augmentations, my_locals):
 def cross_val_main(config_name):
     logger.info(f"Run with config '{config_name}'.")
     with TimeMeasure(enter_msg="Setup everything", exit_msg="Setup finished after {}.", writer=logger.debug):
-        torch.manual_seed(0)
+        torch.manual_seed(1)
         device = get_available_device()
         logger.info(f"Active device: {device}")
 
@@ -220,4 +220,4 @@ def run_config(config_name):
 
 if __name__ == "__main__":
     logger = get_htr_logger(__name__)
-    run_config("config_01_cross-val")
+    run_config("config_02_cross-val")

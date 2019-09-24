@@ -66,7 +66,7 @@ class PadTranscript(object):
 
     def __call__(self, sample):
         image, transcript = sample["image"], sample["transcript"]
-        padded_transcript = (transcript + self.__max_word_length * " ")[:self.__max_word_length]
+        padded_transcript = (transcript + (self.__max_word_length - len(transcript))* " ")
         return {"image": image, "transcript": padded_transcript}
 
 
@@ -77,7 +77,7 @@ class Rescale(object):
 
     def __call__(self, sample):
         image, transcript = sample["image"], sample["transcript"]
-        scaled_image = resize(image, (self.__new_width, self.__new_height))
+        scaled_image = resize_embedded(image, (self.__new_width, self.__new_height))
         return {"image": scaled_image, "transcript": transcript}
 
 
@@ -215,3 +215,15 @@ def right_strip(lst, value):
 
 def word_tensor_to_list(tensor):
     return [right_strip(word, 0) for word in tensor.cpu().tolist()]
+
+def resize_embedded(img, size):
+    width, height = size
+    (h, w) = img.shape
+    fx = w / width
+    fy = h / height
+    f = max(fx, fy)
+    new_size = (max(min(width, int(w / f)), 1), max(min(height, int(h / f)), 1))
+    img = resize(img, (new_size[0], new_size[1]))
+    target = np.ones([height, width]) * 255
+    target[0:new_size[1], 0:new_size[0]] = img
+    return target
