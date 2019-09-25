@@ -22,7 +22,7 @@
 
 \title{Handwritten Text Recognition}
 \date{September, 2019}
-\author{Armand, Christopher Schuster, Mustafa Fuad Rifet Ibrahim}
+\author{Armand Rousselot, Christopher Schuster, Mustafa Fuad Rifet Ibrahim}
 
 \maketitle
 \newpage
@@ -161,7 +161,7 @@ If we let \(A\) be the set of all such valid alignments then the loss is calcula
 \text{loss} = -\log\left(\sum_A p(A)\right)
 \]
 \textbf{Inference}\\\\
-To test the model, we need a method to extract a likely output text given the RNN output. The most intuitive way would be to simply take the alignment with the highest probability, which we call 'Best Path Decoding' in our project. This method works well if the most probable alignment has a significantly higher probability than the rest. A problem can arise when this is not the case. For example if we have only three characters: 'a', 'b' and the blank symbol '-' and we have two time steps \(t_0\) and \(t_1\), then given the following RNN output matrix:
+To test the model, we need a method to extract a likely output text given the RNN output. The most intuitive way would be to simply take the alignment with the highest probability, which we call 'Best Path Decoding' in our project. This method works well if the most probable alignment has a significantly higher probability than the rest. Problems can arise when this is not the case. For example if we have only three characters: 'a', 'b' and the blank symbol '-' and we have two time steps \(t_0\) and \(t_1\), then given the following RNN output matrix:
 \begin{table}[H]
 \centering
 \begin{tabular}{l|l|l|l}
@@ -181,7 +181,7 @@ Best Path Decoding would yield: '-' as the output because the respective alignme
 \end{split}
 \]
 Therefore Best Path Decoding might miss some outputs that are more likely.\\
-A different algorithm called Beam Search Decoding accounts for cases like these. It works by generating possible alignment candidates, expanding them by all characters and calculating the resulting probabilities of these new candidates. In each expansion step it discards all but the most probable ones, e.g. the top 10 candidates will be used in the next expansion step. So if we again have only the three characters 'a', 'b' and blank symbol '-' the first few steps of the beam search algorithm could like the tree in Figure 6.
+A different algorithm called Beam Search Decoding accounts for cases like these. It works by generating possible alignment candidates, expanding them by all characters in the next time step and calculating the resulting probabilities of these new candidates. In each expansion step it discards all but the most probable ones, e.g. the top 10 candidates will be used in the next expansion step. So if we again have only the three characters 'a', 'b' and blank symbol '-' the first few steps of the beam search algorithm could look like the tree in Figure 6.
 \begin{figure}[H]
 \begin{center}
 \includegraphics[scale=0.2]{rsz_beam}
@@ -215,7 +215,7 @@ The main two metrics used in the field of handwritten text recognition or speech
 \[
 \text{CER} = \frac{\text{\#insertions}+\text{\#deletions}+\text{\#substitutions}}{length(\text{GT})}
 \]\\ 
-, where GT stands for the ground truth. WER works the same except for the fact that the sequence of words is used rather than the sequence of characters and that the normalization is done relative to the number of words instead of the number of characters. In addition to these metrics we also recorded the accuracy of the model as simply the percentage of correct words.
+where GT stands for the ground truth. WER works the same except for the fact that the sequence of words is used rather than the sequence of characters and that the normalization is done relative to the number of words instead of the number of characters. In addition to these metrics we also recorded the accuracy of the model as simply the percentage of correct predictions.
 \subsection{The Model}
 We based our initial approach on the Handwritten Text Recognition (HTR) system of Harald Scheidl[8][9]. Our plan was to implement that model with Pytorch as our base line performance model and test out various methods to increase the accuracy. The base model consists of two main parts, namely a Convolutional Neural Network (CNN) and a Recurrent Neural Network (RNN) with a Connectionist Temporal Classification (CTC) output (Table 3).
 \begin{table}[H]
@@ -241,7 +241,7 @@ CTC          &      & \(\leqslant\) 32 \\ \hline
 \end{center}
 \caption{CNN part of the model. The first cube on the left represents the input of size 1x32x128 (channels x height x width) and the last cube on the right represents the output of size 256x1x32.}
 \end{figure}
-The CNN is responsible for extracting relevant features from the input images(Figure 8). All input images have the dimension 32x128 (height x width) and the CNN reduces the width to 32 and the height to 1 while extracting 256 features. In other words, the matrix at the end describes each pixel thin slice along the condensed width of the image with 256 feature values. That creates an input for the RNN that consists of 256 features and 32 time steps.\\\\
+The CNN is responsible for extracting relevant features from the input images(Figure 8). All input images have the dimension 32x128 (height x width) and the CNN reduces the width to 32 and the height to 1 while extracting 256 features. In other words, the matrix at the end describes a one pixel thin slice along the scaled down width (128 $\rightarrow$ 32) of the image with 256 feature values. That creates an input for the RNN that consists of 256 features and 32 time steps.\\\\
 \textbf{RNN}\\
 The RNN takes in the condensed sequence information and uses the extracted features in order to predict the probabilities of the possible characters in the sequence. The RNN used in this case is a Long-Term-Short-Term (LSTM) network that is bidirectional. The output of the RNN consists of a 32x256 map that contains scores for the 256 features for each time step. After the LSTM we used a single CNN layer to map the output of the LSTM to the 80 characters (english alphabet, numbers and a few additional characters plus the CTC blank symbol) that we used, resulting in a 32x80 matrix. We used the CTC algorithm to train the model, as described in the theory section, and decoded the outputs during test time with both Best Path Decoding and Beam Search Decoding. Figure 9 shows how the input matrix is transformed during the feed forward pass.
 \begin{figure}[H]
@@ -279,7 +279,7 @@ CTC          &      & \(\leqslant\) 100 \\ \hline
 \subsection{Deeper Network}
 Deeper neural networks are commonly known to perform better since adding more non-linear layers generally leads to the ability to approximate more complex functions and be more efficient at representing certain functions[R][R][R][R]. In our case, we can deepen the network on multiple different levels.\\\\
 \textbf{Deep CNN}\\\\
-An obvious option is to increase the depth of the CNN of the model by increasing the number of layers.\\\\  
+An obvious option is to increase the depth of the CNN of the model by increasing the number of layers. A more thorough processing of the image features before the RNN would make it easier to extract the correct letters.\\\\  
 \textbf{Deep RNN}\\\\
 Another option is to increase the depth of the RNN. There are several ways of making a RNN deeper[R].\\
 The first way is to make the input-to-hidden function deeper by introducing intermediate non-linear layers. This essentially means that the temporal structure of the input sequence will be extracted based on more high level features which is advantageous because expressing relationships between more abstract features is generally speaking easier[R].\\
