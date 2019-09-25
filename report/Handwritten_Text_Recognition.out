@@ -1,0 +1,24 @@
+\BOOKMARK [1][-]{section.1}{Introduction}{}% 1
+\BOOKMARK [1][-]{section.2}{Theory}{}% 2
+\BOOKMARK [2][-]{subsection.2.1}{Convolutional Neural Networks}{section.2}% 3
+\BOOKMARK [3][-]{subsubsection.2.1.1}{Convolutional Layers}{subsection.2.1}% 4
+\BOOKMARK [3][-]{subsubsection.2.1.2}{Pooling Layers}{subsection.2.1}% 5
+\BOOKMARK [2][-]{subsection.2.2}{Recurrent Neural Networks}{section.2}% 6
+\BOOKMARK [3][-]{subsubsection.2.2.1}{Vanilla RNN}{subsection.2.2}% 7
+\BOOKMARK [3][-]{subsubsection.2.2.2}{Long-Short-Term-Memory Networks}{subsection.2.2}% 8
+\BOOKMARK [2][-]{subsection.2.3}{Connectionist Temporal Classification}{section.2}% 9
+\BOOKMARK [3][-]{subsubsection.2.3.1}{Inference}{subsection.2.3}% 10
+\BOOKMARK [1][-]{section.3}{Methods}{}% 11
+\BOOKMARK [2][-]{subsection.3.1}{Data}{section.3}% 12
+\BOOKMARK [2][-]{subsection.3.2}{Metrics}{section.3}% 13
+\BOOKMARK [2][-]{subsection.3.3}{The Model}{section.3}% 14
+\BOOKMARK [3][-]{subsubsection.3.3.1}{CNN}{subsection.3.3}% 15
+\BOOKMARK [3][-]{subsubsection.3.3.2}{RNN}{subsection.3.3}% 16
+\BOOKMARK [1][-]{section.4}{Results}{}% 17
+\BOOKMARK [1][-]{section.5}{Discussion}{}% 18
+\BOOKMARK [2][-]{subsection.5.1}{Text Line Recognition}{section.5}% 19
+\BOOKMARK [2][-]{subsection.5.2}{Deeper Network}{section.5}% 20
+\BOOKMARK [3][-]{subsubsection.5.2.1}{Deep CNN}{subsection.5.2}% 21
+\BOOKMARK [3][-]{subsubsection.5.2.2}{Deep RNN}{subsection.5.2}% 22
+\BOOKMARK [2][-]{subsection.5.3}{Multidimensional LSTM}{section.5}% 23
+\BOOKMARK [1][-]{section.6}{References}{}% 24
