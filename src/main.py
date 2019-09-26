@@ -208,7 +208,7 @@ def epoch_main(config_name):
             with TimeMeasure(enter_msg="Begin Training.",
                              exit_msg="Finished complete training after {}.",
                              writer=logger.debug):
-                model = trainer.train(train_loader, device=device)
+                model = trainer.train(train_loader, de_en_coder, device=device)
         else:
             with TimeMeasure(enter_msg="Load pre-trained model.",
                              exit_msg="Finished loading after {}.",
@@ -227,4 +227,4 @@ def run_config(config_name):
 
 if __name__ == "__main__":
     logger = get_htr_logger(__name__)
-    run_config("config_07")
+    run_config("config_05")

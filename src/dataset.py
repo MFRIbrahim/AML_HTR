@@ -52,11 +52,11 @@ class WordsDataSet(Dataset):
     def __process_meta_file(self):
         with open(self.__meta_file, 'r') as fp:
             for line in fp:
-                self.__process_meta_line(line)
+                self.__process_meta_line(line, "sentences" in self.__meta_file)
 
-    def __process_meta_line(self, line):
+    def __process_meta_line(self, line, isSentenceFile=False):
         if not line.startswith("#"):
-            self.__words.append(WordsMetaData.parse(line))
+            self.__words.append(WordsMetaData.parse(line, isSentenceFile))
 
     def __availability_check(self):
         to_delete = []
@@ -89,7 +89,6 @@ class WordsDataSet(Dataset):
                     img, word = self[idx]
                     stripped = right_strip(list(map(int, word)), 1)
                     self.__check_word_length(stripped)
-
                 except (cv2.error, ValueError) as e:
                     logger.error(f"Corrupted file at index: {idx}")
                     to_delete.append(idx)
@@ -145,7 +144,7 @@ class WordsDataSet(Dataset):
         if type(idx) == TorchTensor:
             idx = idx.item()
         meta = self.__words[idx]
-
+        logger.debug(self.__words[idx].transcription)
         if self.__pre_processor is None:
             path = meta.path(self.__root_dir)
             image = cv2.imread(path)
@@ -201,6 +200,7 @@ class BoundingBox(object):
 
 
 class WordsMetaData(object):
+
     def __init__(self, wid, segmentation_state, gray_level, bounding_box, pos_tag, transcription):
         """
 
@@ -217,6 +217,7 @@ class WordsMetaData(object):
         self.__bounding_box = bounding_box
         self.__pos_tag = pos_tag
         self.__transcription = transcription
+
 
     @property
     def word_id(self):
@@ -248,7 +249,7 @@ class WordsMetaData(object):
         return os.path.join(root, folder, folder + "-" + subfolder, wid + ".png")
 
     @staticmethod
-    def parse(line):
+    def parse(line, isSentenceFile=False):
         line = line.strip()
         parts = line.split(" ")
         wid = parts[0]
@@ -257,6 +258,13 @@ class WordsMetaData(object):
         pos_tag = parts[7]
         transcription = parts[8]
         box = BoundingBox(x=parts[3], y=parts[4], w=parts[5], h=parts[6])
+        if isSentenceFile:
+            wid = parts[0]
+            state = parts[2]
+            gray_level = parts[3]
+            pos_tag = parts[4]
+            transcription = parts[9].replace("|", " ")
+            box = BoundingBox(x=parts[5], y=parts[6], w=parts[7], h=parts[8])
         return WordsMetaData(wid, state, gray_level, box, pos_tag, transcription)
 
 

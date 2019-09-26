@@ -97,7 +97,7 @@ class ToTensor(object):
 
 class TensorToPIL(object):
     def __init__(self):
-        self.__transform = transforms.ToPILImage("L")
+        self.__transform = transforms.ToPILImage("F")
         self.unsqueezed = False
 
     def __call__(self, sample):
@@ -125,7 +125,7 @@ class TensorToNumpy(object):
 
 
 class RandomErasing(object):
-    def __init__(self, p=0.1, scale=(0.02, 0.04), ratio=(0.3, 3.3), value=1):
+    def __init__(self, p=0.1, scale=(0.02, 0.04), ratio=(0.3, 3.3), value=255):
         self.__transform = transforms.RandomErasing(p=p, scale=scale, ratio=ratio, value=value)
 
     def __call__(self, sample):
