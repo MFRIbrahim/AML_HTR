@@ -25,12 +25,18 @@ def get_available_device():
 
 
 def dynamic_learning_rate(epoch):
-    if epoch < 10:
-        return 1e-2
-    elif epoch < 250:
-        return 1e-3
-    else:
+    if epoch < 50:
         return 1e-4
+    elif epoch < 100:
+        return 1e-5
+    elif epoch < 200:
+        return 1e-6
+    elif epoch < 300:
+        return 1e-7
+    elif epoch < 400:
+        return 1e-8
+    else:
+        return 1e-9
 
 
 def setup_decoder_from_config(config, category):
@@ -147,7 +153,7 @@ def cross_val_main(config_name):
 def epoch_main(config_name):
     logger.info(f"Run with config '{config_name}'.")
     with TimeMeasure(enter_msg="Setup everything", exit_msg="Setup finished after {}.", writer=logger.debug):
-        torch.manual_seed(0)
+        #torch.manual_seed(0)
         device = get_available_device()
         logger.info(f"Active device: {device}")
 

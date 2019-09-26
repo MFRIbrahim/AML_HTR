@@ -12,7 +12,6 @@ class Net(nn.Module):
         # ---CNN layers---
         self.cnn_layers = nn.ModuleList()
 
-
         self.cnn_layers.append(nn.Conv2d(in_channels=1, out_channels=64, kernel_size=(5,5), stride=(1,1), padding=2))
         self.cnn_layers.append(nn.MaxPool2d(kernel_size=(2,2), stride=(2,2), padding=0))
         self.cnn_layers.append(nn.Conv2d(in_channels=64, out_channels=128, kernel_size=(5,5), stride=(1,1), padding=2))
@@ -28,7 +27,6 @@ class Net(nn.Module):
         self.cnn_layers.append(nn.BatchNorm2d(num_features=512))
         self.cnn_layers.append(nn.Conv2d(in_channels=512, out_channels=512, kernel_size=(3,3), stride=(1,1), padding=1))
         self.cnn_layers.append(nn.MaxPool2d(kernel_size=(2,1), stride=(2,1), padding=0))
-
 
         # ---LSTM---
         self.lstm = nn.LSTM(input_size=512, hidden_size=512, num_layers=lstm_layers, batch_first=True, bidirectional=bidirectional, dropout=dropout)

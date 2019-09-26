@@ -43,11 +43,11 @@
         }
       }
     ],
-    "save_path": "../dataset_splits/Standard_Net-big_500.sav",
-    "restore_path": "../dataset_splits/Standard_Net-big_500.sav"
+    "save_path": "../dataset_splits/Deslant_Net-big_500.sav",
+    "restore_path": "../dataset_splits/Deslant_Net-big_500.sav"
   },
   "training": {
-    "name": "Standard_Net-big_500",
+    "name": "Deslant_Net-big_500",
     "retrain": true,
     "environment": {
       "epochs": 500,

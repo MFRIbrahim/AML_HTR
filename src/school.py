@@ -197,8 +197,7 @@ class Trainer(object):
     def __print_words_in_batch(self, ctc_input):
         cpu_input = np.array(copy(ctc_input).detach().cpu())
         out = self.__word_prediction(cpu_input)
-        # for i, word in enumerate(out):
-        #   logger.debug("{:02d}: '{}'".format(i, word))
+        logger.debug("{:02d}: avg{}, '{}'".format(len(out), sum([len(x) for x in out]) / len(out), out))
         return out
 
     def __save_progress(self, total_epochs, model, loss):
@@ -210,11 +209,11 @@ class Trainer(object):
 
     def __save_period_stats(self, total_epochs):
         stats = Statistics.get_instance(self.__name)
-        accs = self.model_eval()
+        accs = self.model_eval(self.__model)
 
         stats.save_per_period(total_epochs,
-                              train_acc=accs.get("train", 0.0),
-                              test_acc=accs.get("test", 0.0))
+                              train_metrics=accs.get("train", 0.0),
+                              test_metrics=accs.get("test", 0.0))
 
     def load_latest_model(self):
         total_epochs, state_dict, loss = self.__load_progress()

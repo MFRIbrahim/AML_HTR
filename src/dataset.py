@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 from json import dump as json_write, load as json_read
 
 import cv2
@@ -10,7 +11,7 @@ from torch.utils.data import Dataset, DataLoader, random_split
 from torch.utils.data.dataset import Subset
 from sklearn.model_selection import KFold
 
-from util import TimeMeasure, is_file, make_directories_for_file
+from util import TimeMeasure, is_file, make_directories_for_file, Replacer
 from transformations import right_strip
 
 logger = logging.getLogger(__name__)
@@ -50,13 +51,14 @@ class WordsDataSet(Dataset):
             self.__create_statistics()
 
     def __process_meta_file(self):
+        is_sentence = "sentences" in self.__meta_file
         with open(self.__meta_file, 'r') as fp:
             for line in fp:
-                self.__process_meta_line(line, "sentences" in self.__meta_file)
+                self.__process_meta_line(line, is_sentence=is_sentence)
 
-    def __process_meta_line(self, line, isSentenceFile=False):
+    def __process_meta_line(self, line, is_sentence=False):
         if not line.startswith("#"):
-            self.__words.append(WordsMetaData.parse(line, isSentenceFile))
+            self.__words.append(WordsMetaData.parse(line, is_sentence=is_sentence))
 
     def __availability_check(self):
         to_delete = []
@@ -201,6 +203,8 @@ class BoundingBox(object):
 
 class WordsMetaData(object):
 
+    _replace = Replacer()
+
     def __init__(self, wid, segmentation_state, gray_level, bounding_box, pos_tag, transcription):
         """
 
@@ -249,7 +253,7 @@ class WordsMetaData(object):
         return os.path.join(root, folder, folder + "-" + subfolder, wid + ".png")
 
     @staticmethod
-    def parse(line, isSentenceFile=False):
+    def parse(line, is_sentence=False):
         line = line.strip()
         parts = line.split(" ")
         wid = parts[0]
@@ -258,13 +262,15 @@ class WordsMetaData(object):
         pos_tag = parts[7]
         transcription = parts[8]
         box = BoundingBox(x=parts[3], y=parts[4], w=parts[5], h=parts[6])
-        if isSentenceFile:
+
+        if is_sentence:
             wid = parts[0]
             state = parts[2]
             gray_level = parts[3]
             pos_tag = parts[4]
-            transcription = parts[9].replace("|", " ")
+            transcription = WordsMetaData._replace(parts[9])
             box = BoundingBox(x=parts[5], y=parts[6], w=parts[7], h=parts[8])
+
         return WordsMetaData(wid, state, gray_level, box, pos_tag, transcription)
 
 
