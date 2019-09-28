@@ -287,7 +287,7 @@ The main two metrics used in the field of handwritten text recognition or speech
 \text{CER} = \frac{\text{\#insertions}+\text{\#deletions}+\text{\#substitutions}}{length(\text{GT})}
 \]\\ 
 where GT stands for the ground truth. WER works the same except for the fact that the sequence of words is used rather than the sequence of characters and that the normalization is done relative to the number of words instead of the number of characters. In addition to these metrics we also recorded the accuracy of the model as simply the percentage of correct predictions.
-\subsection{The Model}
+\subsection{Word Recognition Model}
 We based our initial approach on the Handwritten Text Recognition (HTR) system of Harald Scheidl\cite{ScheidlHTR}\cite{ScheidlCTC}. Our plan was to implement that model with Pytorch as our base line performance model and test out various methods to increase the accuracy. The base model consists of two main parts, namely a Convolutional Neural Network (CNN) and a Recurrent Neural Network (RNN) with a Connectionist Temporal Classification (CTC) output (Table \ref{tab:SmallModel}).
 \begin{table}[H]
 \centering
@@ -324,14 +324,8 @@ The RNN takes in the condensed sequence information and uses the extracted featu
 \caption{Transformation through the model layers. In the top left is the input image and in the bottom left is the RNN output matrix after it was projected onto 80 characters.}
 \label{fig:featureshapes}
 \end{figure}
-
-\newpage
-\section{Results}
-
-\newpage
-\section{Discussion}
-\subsection{Text Line Recognition}
-The model we built can be easily extended to recognize entire text lines, i.e. multiple words at once, by increasing the input size to make space for more words as well as adjusting the CNN layers accordingly by adding more layers and increasing the hidden size of the LSTM. An example of such a bigger model, taken from the thesis of Harald Scheidl\cite{ScheidlThesis}, can be seen in Table \ref{tab:BigModel}.
+\subsection{Text Line Recognition Model}
+In addition to the base line model, we also built a bigger model that can recognize entire text lines, i.e. multiple words at once. This model, that we took from the thesis of Harald Scheidl\cite{ScheidlThesis}, has a larger input size to make space for more words, as well as more CNN layers and an increased hidden size of the LSTM (Table \ref{tab:BigModel}).
 \begin{table}[H]
 \centering
 \begin{tabular}{l|l|l}
@@ -351,6 +345,12 @@ CTC          &      & \(\leqslant\) 100 \\ \hline
 \caption{Example of a Neural Network architecture capable of recognizing text lines.}
 \label{tab:BigModel}
 \end{table}
+
+\newpage
+\section{Results}
+
+\newpage
+\section{Discussion}
 \subsection{Deeper Network}
 Deeper neural networks are commonly known to perform better since adding more non-linear layers generally leads to the ability to approximate more complex functions and be more efficient at representing certain functions\cite{Bengio}\cite{LeRoux}\cite{Delalleau}\cite{Pascanu1}. In our case, we can deepen the network on multiple different levels.
 \subsubsection{Deep CNN}

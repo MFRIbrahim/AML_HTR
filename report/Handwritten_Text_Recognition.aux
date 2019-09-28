@@ -61,40 +61,40 @@
 \citation{ScheidlHTR}
 \citation{ScheidlCTC}
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Metrics}{15}{subsection.3.2}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}The Model}{16}{subsection.3.3}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Word Recognition Model}{16}{subsection.3.3}}
 \@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Neural Network architecture of the base line model.\relax }}{16}{table.caption.11}}
 \newlabel{tab:SmallModel}{{3}{16}{Neural Network architecture of the base line model.\relax }{table.caption.11}{}}
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {3.3.1}CNN}{16}{subsubsection.3.3.1}}
 \@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces CNN part of the model. The first cube on the left represents the input of size 1x32x128 (channels x height x width) and the last cube on the right represents the output of size 256x1x32.\relax }}{16}{figure.caption.12}}
 \newlabel{fig:ModelCNN}{{8}{16}{CNN part of the model. The first cube on the left represents the input of size 1x32x128 (channels x height x width) and the last cube on the right represents the output of size 256x1x32.\relax }{figure.caption.12}{}}
+\citation{ScheidlThesis}
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {3.3.2}RNN}{17}{subsubsection.3.3.2}}
 \@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces Transformation through the model layers. In the top left is the input image and in the bottom left is the RNN output matrix after it was projected onto 80 characters.\relax }}{17}{figure.caption.13}}
 \newlabel{fig:featureshapes}{{9}{17}{Transformation through the model layers. In the top left is the input image and in the bottom left is the RNN output matrix after it was projected onto 80 characters.\relax }{figure.caption.13}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {4}Results}{18}{section.4}}
-\citation{ScheidlThesis}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}Text Line Recognition Model}{18}{subsection.3.4}}
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Example of a Neural Network architecture capable of recognizing text lines.\relax }}{18}{table.caption.14}}
+\newlabel{tab:BigModel}{{4}{18}{Example of a Neural Network architecture capable of recognizing text lines.\relax }{table.caption.14}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4}Results}{19}{section.4}}
 \citation{Bengio}
 \citation{LeRoux}
 \citation{Delalleau}
 \citation{Pascanu1}
 \citation{Pascanu2}
 \citation{Mikolov}
-\@writefile{toc}{\contentsline {section}{\numberline {5}Discussion}{19}{section.5}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Text Line Recognition}{19}{subsection.5.1}}
-\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Example of a Neural Network architecture capable of recognizing text lines.\relax }}{19}{table.caption.14}}
-\newlabel{tab:BigModel}{{4}{19}{Example of a Neural Network architecture capable of recognizing text lines.\relax }{table.caption.14}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Deeper Network}{19}{subsection.5.2}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.2.1}Deep CNN}{19}{subsubsection.5.2.1}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.2.2}Deep RNN}{19}{subsubsection.5.2.2}}
 \citation{Graves}
 \citation{ScheidlThesis}
 \citation{Moysset}
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Multidimensional LSTM}{20}{subsection.5.3}}
+\@writefile{toc}{\contentsline {section}{\numberline {5}Discussion}{20}{section.5}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Deeper Network}{20}{subsection.5.1}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.1.1}Deep CNN}{20}{subsubsection.5.1.1}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.1.2}Deep RNN}{20}{subsubsection.5.1.2}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Multidimensional LSTM}{20}{subsection.5.2}}
 \citation{Bahar}
 \citation{Bahar}
 \@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Example of a Neural Network architecture with a MDLSTM. Note that the vertical dimension was not reduced to 1 with the CNN layers, rather it was used after the LSTM to calculate an average of the output scores of the LSTM.\relax }}{21}{table.caption.15}}
 \newlabel{tab:MDLSTM}{{5}{21}{Example of a Neural Network architecture with a MDLSTM. Note that the vertical dimension was not reduced to 1 with the CNN layers, rather it was used after the LSTM to calculate an average of the output scores of the LSTM.\relax }{table.caption.15}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {10}{\ignorespaces A two dimensional LSTM architecture, at each block, the network receives the corresponding pixel from the input image \cite  {Bahar}.\relax }}{21}{figure.caption.16}}
-\newlabel{fig:2DLSTM}{{10}{21}{A two dimensional LSTM architecture, at each block, the network receives the corresponding pixel from the input image \cite {Bahar}.\relax }{figure.caption.16}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {10}{\ignorespaces A two dimensional LSTM architecture, at each block, the network receives the corresponding pixel from the input image \cite  {Bahar}.\relax }}{22}{figure.caption.16}}
+\newlabel{fig:2DLSTM}{{10}{22}{A two dimensional LSTM architecture, at each block, the network receives the corresponding pixel from the input image \cite {Bahar}.\relax }{figure.caption.16}{}}
 \bibcite{Angelica}{1}
 \bibcite{Goodfellow1}{2}
 \bibcite{Stanford}{3}
@@ -110,7 +110,7 @@
 \bibcite{Pascanu1}{13}
 \bibcite{Pascanu2}{14}
 \bibcite{Mikolov}{15}
-\@writefile{toc}{\contentsline {section}{\numberline {6}References}{22}{section.6}}
+\@writefile{toc}{\contentsline {section}{\numberline {6}References}{23}{section.6}}
 \bibcite{Graves}{16}
 \bibcite{ScheidlThesis}{17}
 \bibcite{Moysset}{18}
