@@ -11,6 +11,8 @@
 \usepackage{graphicx}
 \usepackage{url}
 \usepackage{hyperref}
+\usepackage[dvipsnames]{xcolor}
+\usepackage{scrextend}
 \graphicspath{ {./pics/} }
 
 \DeclareMathOperator*{\argmin}{argmin}
@@ -19,6 +21,7 @@
 \newcommand{\R}{\mathbb{R}}
 \newcommand{\N}{\mathbb{N}}
 \newcommand{\Z}{\mathbb{Z}}
+
 
 \begin{document}
 
@@ -212,7 +215,7 @@ In order to counteract overfitting and improve the accuracy, we applied the foll
 \item perspective shift
 \item random erasing of pixels
 \end{itemize}
-For each training batch we applied these transformations with a certain probability. In addition to that we also preprocessed all images with a deslanting algorithm and tested whether or not using this deslanted training set as the default unaugmented base would result in an accuracy improvement. Figure \ref{fig:augmentations} shows an example of a transformation.
+For each training batch we applied these transformations with a certain probability. Figure \ref{fig:augmentations} shows an example of a transformation.
 \begin{figure}[H]
 \begin{center}
 \includegraphics[scale=0.3]{rsz_transform}
@@ -220,6 +223,63 @@ For each training batch we applied these transformations with a certain probabil
 \caption{Example of a transformation of two images. The upper image shows a random erasing of pixels and the lower image shows a perspective shift. Both images were deslanted.}
 \label{fig:augmentations}
 \end{figure}
+
+\subsubsection{Deslanting}
+In addition to the above mentioned augmentations we also preprocessed all images with a deslanting algorithm and tested whether or not using this deslanted training set as the default unaugmented base would result in an accuracy improvement. Deslanting describes the process of removing a slant or a slope in a written word, e.g. from a cursive writing style. The traditional deslanting algorithm by Bozinovic and Srihari \cite{Bozinovic} works as shown in Algorithm 1.
+
+\begin{algorithm}	
+\textbf{Algorithm 1: Traditional Deslanting} \\
+\textbf{Data} image I \\
+\textbf{Result}: deslanted image \\
+$I_{bw} = threshold(I)$ \textcolor{gray}{//transform image into black and white} \\
+$\rho_h = density_x(I_{bw})$ \textcolor{gray}{//calculate the number of foreground pixels in each row and form a histogram} \\
+$B_h = min(threshold(\rho_h))$ \textcolor{gray}{//form a horizontal baseline based on the lowest point, where the threshold for a "core region" is passed} \\
+$\phi = leastSquares(I_{bw}, B_h)$ \textcolor{gray}{//find the optimal angle phi of the baseline using least squares to best fit the baseline to the lower extremities of the characters} \\
+$I_s = rotate(I_{bw}, \phi)$ \textcolor{gray}{//rotate the image by phi} \\
+$S = horizontalRegions(I_s)$ \textcolor{gray}{//find horizontal strips of the image, in which the lines are not running horizontally for longer than a threshold (MaxRun)} \\
+$R = cutStrips(S)$ \textcolor{gray}{//cut white regions out to the strips to only obtain rectangles with foreground pixels in them} \\
+\textbf{for} $region$ \textbf{in} $R$: 
+\begin{addmargin}[1em] {0em}% 1em left, 2em right
+$upper, lower = splitRegion(region)$ \textcolor{gray}{//Split region in half} \\
+$center_u, center_l = centerOfMass(upper), centerOfMass(lower)$ \textcolor{gray}{//calculate the center of foreground pixels} \\
+$\alpha$ += $slope(connect(center_u, center_l))$ \textcolor{gray}{//assume the slope of the connection line to be the slant}
+\end{addmargin}
+$\alpha$ /= $len(regions)$ \textcolor{gray}{//average over all regions} \\
+$I_{deslanted} = shear(I_s, \alpha)$ \textcolor{gray}{// shear the Image} \\
+\textbf{return }$I_{deslanted}$
+\end{algorithm}
+
+This algorithm is known to not be robust when long horizontal lines are present, e.g. in ornate writing styles. This disturbs the baseline fitting and leads to a tilted image in the second part of the algorithm. It is also highly dependent on the right choice of the parameter MaxRun which determines the strips in the image to discard.
+To combat these problems Vinciarelli and Luettin \cite{Vinciarelli} introduced an improved algorithm, with two main differences:
+\begin{itemize}
+\item No baseline is needed
+\item The deslanting angle is calculated over the whole image, not selected subregions
+\end{itemize}
+To achieve this, a list of suggested (reasonable) angles is needed, of which the one with the best score is picked. This score is based on the assumption that the deslanted image will on average have the longest vertical lines in all columns of the image.
+The algorithm works as shown in Algorithm 2.
+
+\begin{algorithm}	
+\textbf{Algorithm 2: Improved Deslanting} \\
+\textbf{Data} image I, list of angles A \\
+\textbf{Result}: deslanted image \\
+$I_{bw} = threshold(I)$ \textcolor{gray}{//transform image into black and white} \\
+$S = {}$ \textcolor{gray}{//list of scores for each angle} \\
+\textbf{for} $\alpha$ \textbf{in} $A$:
+\begin{addmargin}[1em] {0em}% 1em left, 2em right
+$I_{\alpha} = shear(I_{bw}, \alpha)$ \textcolor{gray}{//shear Image} \\
+\textbf{for} $i$ \textbf{in} $columns(I_{\alpha})$:
+\begin{addmargin}[1em] {0em}% 1em left, 2em right
+$h_{\alpha} = numForeground(I_{\alpha}[i])$ \textcolor{gray}{//get the number of black pixels in column i} \\
+$\Delta y_{\alpha} = maxDistForeground(I_{\alpha}[i])$ \textcolor{gray}{//distance of the first and last foreground pixel in column i} \\
+\textbf{if} $h_{\alpha} == \Delta y_{\alpha}$:
+\begin{addmargin}[1em] {0em}% 1em left, 2em right
+$S(\alpha)$ += $h_{\alpha}^2$ \textcolor{gray}{//add length of the vertical line to the angle score, if it is continouus}
+\end{addmargin}
+\end{addmargin}
+\end{addmargin}
+$\hat{\alpha} = argmax_{\alpha}(S(\alpha))$ \textcolor{gray}{//pick the best angle} \\
+\textbf{return} $shear(I, \hat{\alpha})$  
+\end{algorithm}
 
 \subsection{Metrics}
 The main two metrics used in the field of handwritten text recognition or speech recognition are the Character Error Rate (CER) and the Word Error Rate (WER). Both of these metrics are based on measuring the Levenshtein distance between the decoded output of the model and the ground truth text. The Levenshtein distance measures the minimum amount of insertions, deletions and substitutions needed to convert one word to another, in this case output to ground truth text. CER simply normalizes this distance relative to the number of characters in the ground truth text:\\
@@ -432,6 +492,16 @@ CTC          &      & \(\leqslant\) 100 \\ \hline
      Parnia Bahar, Albert Zeyer, Ralf Schlüter, Hermann Ney 
     \newblock On Using 2D Sequence-to-sequence Models for Speech Recognition
     \newblock ICASSP 2019-2019 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP), Brighton, United Kingdom, 2019, pp. 5671-5675
+    
+    \bibitem{Vinciarelli}
+     Vinciarelli A, Luettin J.
+    \newblock A new normalization technique for cursive handwritten words
+    \newblock Pattern recognition letters. 2001 Jul 1;22(9):1043-50.
+
+    \bibitem{Bozinovic}
+     R. M. Bozinovic and S. N. Srihari
+    \newblock Off-line cursive script word recognition
+    \newblock IEEE Transactions on Pattern Analysis and Machine Intelligence, vol. 11, no. 1, pp. 68-83, Jan. 1989
         
 \end{thebibliography}
 
