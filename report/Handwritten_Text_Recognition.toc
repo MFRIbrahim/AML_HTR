@@ -17,9 +17,9 @@
 \contentsline {subsubsection}{\numberline {3.3.2}RNN}{17}{subsubsection.3.3.2}
 \contentsline {subsection}{\numberline {3.4}Text Line Recognition Model}{18}{subsection.3.4}
 \contentsline {section}{\numberline {4}Results}{19}{section.4}
-\contentsline {section}{\numberline {5}Discussion}{20}{section.5}
-\contentsline {subsection}{\numberline {5.1}Deeper Network}{20}{subsection.5.1}
-\contentsline {subsubsection}{\numberline {5.1.1}Deep CNN}{20}{subsubsection.5.1.1}
-\contentsline {subsubsection}{\numberline {5.1.2}Deep RNN}{20}{subsubsection.5.1.2}
-\contentsline {subsection}{\numberline {5.2}Multidimensional LSTM}{20}{subsection.5.2}
-\contentsline {section}{\numberline {6}References}{23}{section.6}
+\contentsline {section}{\numberline {5}Discussion}{23}{section.5}
+\contentsline {subsection}{\numberline {5.1}Deeper Network}{23}{subsection.5.1}
+\contentsline {subsubsection}{\numberline {5.1.1}Deep CNN}{23}{subsubsection.5.1.1}
+\contentsline {subsubsection}{\numberline {5.1.2}Deep RNN}{23}{subsubsection.5.1.2}
+\contentsline {subsection}{\numberline {5.2}Multidimensional LSTM}{23}{subsection.5.2}
+\contentsline {section}{\numberline {6}References}{26}{section.6}

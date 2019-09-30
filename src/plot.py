@@ -88,7 +88,7 @@ if __name__ == "__main__":
     preprocessors = ("Deslant", "Standard")
     names = ("big", "small",)
     augmentations = ("", "_augmentations")
-    kind_of_stat = {"small": ("acc", "cer"), "big": ("acc", "wer")}
+    kind_of_stat = {"small": ("acc", "cer"), "big": ("acc", "wer", "cer")}
 
     for preprocessor in preprocessors:
         for name in names:
@@ -98,4 +98,3 @@ if __name__ == "__main__":
                     process_folder(folder, plot_columns=kind_of_stat[name])
                 except FileNotFoundError as e:
                     print(e)
-

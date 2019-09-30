@@ -13,6 +13,7 @@
 \usepackage{hyperref}
 \usepackage[dvipsnames]{xcolor}
 \usepackage{scrextend}
+\usepackage{changepage}
 \graphicspath{ {./pics/} }
 
 \DeclareMathOperator*{\argmin}{argmin}
@@ -348,6 +349,144 @@ CTC          &      & \(\leqslant\) 100 \\ \hline
 
 \newpage
 \section{Results}
+
+Figures \ref{fig:AccuracySmall} to \ref{fig:CERBig} provide an overview of the results we achieved and especially a comparison of augmented/deslanted datasets to their unprocessed counterparts. WER for the small model was not provided as it was trained on a single word dataset, in which $WER = 1 - Accuracy$. When looking at the small model, the train accuracy seems almost unaffected by the deslanting or augmentations, however deslanting clearly shows an improvement of test accuracy in Fig. \ref{fig:AccuracySmall} with and without augmentations. When looking at the CER in Fig \ref{fig:CERSmall} we can also see that while the effect is small, not only deslanting but also data augmentations improved the test CER. This effect might be greater if more aggressive augmentations were applied (higher chance and bigger effect of augmentations). The positive effect of deslanting is more pronounced in the big models. Overall, the big model performed worse than the small model. We cannot compare the accuracies directly, as the big model predicts whole lines of text while the small model only works on single words. However, we can compare the WER and CER of the two models and still find that the small model performs better. A possible reason for this might be the small number of epochs used for cross validation. The bigger model would likely benefit a lot more from a higher number of epochs. Another point can be made about predicting longer strings at once (i.e. whole sentences) being possibly way harder for a RNN. If the prediction of one letter is faulty and the hidden state is misadjusted, this could carry through the rest of the string. This is way more likely to happen if the output size is three times longer as it is for the big model, compared to the small model. 
+
+\begin{minipage}[!h]{1\linewidth}
+\vspace{-30mm}
+
+\begin{figure}[H]
+	\begin{adjustwidth}{-8em}{-8em}
+	
+	\centering
+    \begin{subfigure}{0.7\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Standard_small_150_acc}
+    \end{subfigure}
+    \begin{subfigure}{0.7\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Standard_small_150_augmentations_acc}
+    \end{subfigure}
+    \begin{subfigure}{0.7\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Deslant_small_150_acc}
+    \end{subfigure}
+    \begin{subfigure}{0.7\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Deslant_small_150_augmentations_acc}
+    \end{subfigure}
+    \end{adjustwidth}
+\caption{Accuracy of the small model variations}
+
+\label{fig:AccuracySmall}
+\end{figure}
+
+\begin{figure}[H]
+	\begin{adjustwidth}{-8em}{-8em}
+	\centering
+    \begin{subfigure}{0.7\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Standard_small_150_cer}
+    \end{subfigure}
+    \begin{subfigure}{0.7\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Standard_small_150_augmentations_cer}
+    \end{subfigure}
+    \begin{subfigure}{0.7\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Deslant_small_150_cer}
+    \end{subfigure}
+    \begin{subfigure}{0.7\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Deslant_small_150_augmentations_cer}
+    \end{subfigure}
+    \end{adjustwidth}
+\caption{CER of the small model variations}
+
+\label{fig:CERSmall}
+\end{figure}
+\end{minipage}
+
+
+\begin{minipage}[H]{1\linewidth}
+\vspace{-30mm}
+
+
+\begin{figure}[H]
+	\begin{adjustwidth}{-8em}{-8em}
+	\centering
+    \begin{subfigure}{0.7\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Standard_big_150_acc}
+    \end{subfigure}
+    \begin{subfigure}{0.7\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Standard_big_150_augmentations_acc}
+    \end{subfigure}
+    \begin{subfigure}{0.7\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Deslant_big_150_acc}
+    \end{subfigure}
+    \begin{subfigure}{0.7\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Deslant_big_150_augmentations_acc}
+    \end{subfigure}
+    \end{adjustwidth}
+\caption{Accuracy of the big model variations}
+
+\label{fig:AccuracyBig}
+\end{figure}
+
+\begin{figure}[H]
+	\begin{adjustwidth}{-8em}{-8em}
+	\centering
+    \begin{subfigure}{0.7\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Standard_big_150_wer}
+    \end{subfigure}
+    \begin{subfigure}{0.7\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Standard_big_150_augmentations_wer}
+    \end{subfigure}
+    \begin{subfigure}{0.7\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Deslant_big_150_wer}
+    \end{subfigure}
+    \begin{subfigure}{0.7\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Deslant_big_150_augmentations_wer}
+    \end{subfigure}
+    \end{adjustwidth}
+\caption{WER of the big model variations}
+
+\label{fig:WERBig}
+\end{figure}
+\end{minipage}
+
+\begin{figure}[H]
+	\begin{adjustwidth}{-8em}{-8em}
+	\centering
+    \begin{subfigure}{0.7\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Standard_big_150_cer}
+    \end{subfigure}
+    \begin{subfigure}{0.7\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Standard_big_150_augmentations_cer}
+    \end{subfigure}
+    \begin{subfigure}{0.7\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Deslant_big_150_cer}
+    \end{subfigure}
+    \begin{subfigure}{0.7\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{Deslant_big_150_augmentations_cer}
+    \end{subfigure}
+    \end{adjustwidth}
+\caption{CER of the big model variations}
+
+\label{fig:CERBig}
+\end{figure}
 
 \newpage
 \section{Discussion}

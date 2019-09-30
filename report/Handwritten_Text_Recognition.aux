@@ -43,10 +43,10 @@
 \newlabel{fig:LSTM}{{5}{8}{LSTM Visualization. Hidden state, input and output are shown as before. The purple rectangles are neural network layers that use a sigmoid or tanh function. The brown rectangle and brown circles are point wise operations of multiplication 'X', addition '+' or a tanh function. The dark green circles are the cell state and the red square is the function used to get a desired output like for example a class score.\relax }{figure.caption.6}{}}
 \citation{Hannun}
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Connectionist Temporal Classification}{9}{subsection.2.3}}
-\newlabel{tab:SampleRNNOutput}{{\caption@xref {tab:SampleRNNOutput}{ on input line 153}}{10}{Connectionist Temporal Classification}{table.caption.7}{}}
+\newlabel{tab:SampleRNNOutput}{{\caption@xref {tab:SampleRNNOutput}{ on input line 154}}{10}{Connectionist Temporal Classification}{table.caption.7}{}}
 \@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces RNN output matrix. Only the first four letters and first three time steps are shown. The blank symbol '-' is also part of the output and has a probability for each time step. In this case the text in the input image is likely located near the left border of the image since this example output shows high probability for the respective letters of the word appearing right at the start.\relax }}{10}{table.caption.7}}
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {2.3.1}Inference}{11}{subsubsection.2.3.1}}
-\newlabel{tab:RNNOutputProblem}{{\caption@xref {tab:RNNOutputProblem}{ on input line 179}}{11}{Inference}{table.caption.8}{}}
+\newlabel{tab:RNNOutputProblem}{{\caption@xref {tab:RNNOutputProblem}{ on input line 180}}{11}{Inference}{table.caption.8}{}}
 \@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces RNN Output Matrix.\relax }}{11}{table.caption.8}}
 \@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Beam Search visualization with a tree graph. The red circles are the candidate extensions and the blue circles are the current guesses. Empty circles stand for empty strings. The dotted lines stand for the output to which the current guess plus the candidate extension map to. In each step we take the 3 most probable extended words. When multiple alignments map to one output (more than 3 circles like in Iteration 2 and 3) the probabilities are summed and summarized under one new guess. \relax }}{12}{figure.caption.9}}
 \newlabel{fig:beamsearch}{{6}{12}{Beam Search visualization with a tree graph. The red circles are the candidate extensions and the blue circles are the current guesses. Empty circles stand for empty strings. The dotted lines stand for the output to which the current guess plus the candidate extension map to. In each step we take the 3 most probable extended words. When multiple alignments map to one output (more than 3 circles like in Iteration 2 and 3) the probabilities are summed and summarized under one new guess. \relax }{figure.caption.9}{}}
@@ -75,6 +75,16 @@
 \@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Example of a Neural Network architecture capable of recognizing text lines.\relax }}{18}{table.caption.14}}
 \newlabel{tab:BigModel}{{4}{18}{Example of a Neural Network architecture capable of recognizing text lines.\relax }{table.caption.14}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {4}Results}{19}{section.4}}
+\@writefile{lof}{\contentsline {figure}{\numberline {10}{\ignorespaces Accuracy of the small model variations\relax }}{20}{figure.caption.15}}
+\newlabel{fig:AccuracySmall}{{10}{20}{Accuracy of the small model variations\relax }{figure.caption.15}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {11}{\ignorespaces CER of the small model variations\relax }}{20}{figure.caption.16}}
+\newlabel{fig:CERSmall}{{11}{20}{CER of the small model variations\relax }{figure.caption.16}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {12}{\ignorespaces Accuracy of the big model variations\relax }}{21}{figure.caption.17}}
+\newlabel{fig:AccuracyBig}{{12}{21}{Accuracy of the big model variations\relax }{figure.caption.17}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {13}{\ignorespaces WER of the big model variations\relax }}{21}{figure.caption.18}}
+\newlabel{fig:WERBig}{{13}{21}{WER of the big model variations\relax }{figure.caption.18}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {14}{\ignorespaces CER of the big model variations\relax }}{22}{figure.caption.19}}
+\newlabel{fig:CERBig}{{14}{22}{CER of the big model variations\relax }{figure.caption.19}{}}
 \citation{Bengio}
 \citation{LeRoux}
 \citation{Delalleau}
@@ -84,17 +94,17 @@
 \citation{Graves}
 \citation{ScheidlThesis}
 \citation{Moysset}
-\@writefile{toc}{\contentsline {section}{\numberline {5}Discussion}{20}{section.5}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Deeper Network}{20}{subsection.5.1}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.1.1}Deep CNN}{20}{subsubsection.5.1.1}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.1.2}Deep RNN}{20}{subsubsection.5.1.2}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Multidimensional LSTM}{20}{subsection.5.2}}
+\@writefile{toc}{\contentsline {section}{\numberline {5}Discussion}{23}{section.5}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Deeper Network}{23}{subsection.5.1}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.1.1}Deep CNN}{23}{subsubsection.5.1.1}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {5.1.2}Deep RNN}{23}{subsubsection.5.1.2}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Multidimensional LSTM}{23}{subsection.5.2}}
 \citation{Bahar}
 \citation{Bahar}
-\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Example of a Neural Network architecture with a MDLSTM. Note that the vertical dimension was not reduced to 1 with the CNN layers, rather it was used after the LSTM to calculate an average of the output scores of the LSTM.\relax }}{21}{table.caption.15}}
-\newlabel{tab:MDLSTM}{{5}{21}{Example of a Neural Network architecture with a MDLSTM. Note that the vertical dimension was not reduced to 1 with the CNN layers, rather it was used after the LSTM to calculate an average of the output scores of the LSTM.\relax }{table.caption.15}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {10}{\ignorespaces A two dimensional LSTM architecture, at each block, the network receives the corresponding pixel from the input image \cite  {Bahar}.\relax }}{22}{figure.caption.16}}
-\newlabel{fig:2DLSTM}{{10}{22}{A two dimensional LSTM architecture, at each block, the network receives the corresponding pixel from the input image \cite {Bahar}.\relax }{figure.caption.16}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Example of a Neural Network architecture with a MDLSTM. Note that the vertical dimension was not reduced to 1 with the CNN layers, rather it was used after the LSTM to calculate an average of the output scores of the LSTM.\relax }}{24}{table.caption.20}}
+\newlabel{tab:MDLSTM}{{5}{24}{Example of a Neural Network architecture with a MDLSTM. Note that the vertical dimension was not reduced to 1 with the CNN layers, rather it was used after the LSTM to calculate an average of the output scores of the LSTM.\relax }{table.caption.20}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {15}{\ignorespaces A two dimensional LSTM architecture, at each block, the network receives the corresponding pixel from the input image \cite  {Bahar}.\relax }}{25}{figure.caption.21}}
+\newlabel{fig:2DLSTM}{{15}{25}{A two dimensional LSTM architecture, at each block, the network receives the corresponding pixel from the input image \cite {Bahar}.\relax }{figure.caption.21}{}}
 \bibcite{Angelica}{1}
 \bibcite{Goodfellow1}{2}
 \bibcite{Stanford}{3}
@@ -110,7 +120,7 @@
 \bibcite{Pascanu1}{13}
 \bibcite{Pascanu2}{14}
 \bibcite{Mikolov}{15}
-\@writefile{toc}{\contentsline {section}{\numberline {6}References}{23}{section.6}}
+\@writefile{toc}{\contentsline {section}{\numberline {6}References}{26}{section.6}}
 \bibcite{Graves}{16}
 \bibcite{ScheidlThesis}{17}
 \bibcite{Moysset}{18}
