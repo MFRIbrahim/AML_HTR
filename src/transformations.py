@@ -97,7 +97,7 @@ class ToTensor(object):
 
 class TensorToPIL(object):
     def __init__(self):
-        self.__transform = transforms.ToPILImage("L")
+        self.__transform = transforms.ToPILImage("F")
         self.unsqueezed = False
 
     def __call__(self, sample):
@@ -107,7 +107,7 @@ class TensorToPIL(object):
         if image.ndim == 2:
             image = image.unsqueeze(0)
             self.unsqueezed = True
-        return self.__transform(image), transcript
+        return {"image": self.__transform(image), "transcript": transcript}
 
 
 class TensorToNumpy(object):
@@ -125,7 +125,7 @@ class TensorToNumpy(object):
 
 
 class RandomErasing(object):
-    def __init__(self, p=0.1, scale=(0.02, 0.04), ratio=(0.3, 3.3), value=1):
+    def __init__(self, p=0.1, scale=(0.02, 0.04), ratio=(0.3, 3.3), value=255):
         self.__transform = transforms.RandomErasing(p=p, scale=scale, ratio=ratio, value=value)
 
     def __call__(self, sample):
@@ -141,10 +141,10 @@ class RandomRotateAndTranslate(object):
             [transforms.RandomAffine(degrees=degrees, translate=translate, fillcolor=fillcolor)], p=p)
 
     def __call__(self, sample):
-        image, transcript = sample
+        image, transcript = sample["image"], sample["transcript"]
         if not (type(image) == PIL.Image.Image):
             raise ValueError(f"Can only perform Rotation and Translation on PIL.Image.Image, not  '{type(image)}'")
-        return self.__transform(image), transcript
+        return {"image": self.__transform(image), "transcript": transcript}
 
 
 class RandomJitter(object):
@@ -152,10 +152,10 @@ class RandomJitter(object):
         self.__transform = transforms.RandomApply([transforms.ColorJitter()], p=p)
 
     def __call__(self, sample):
-        image, transcript = sample
+        image, transcript = sample["image"], sample["transcript"]
         if not (type(image) == PIL.Image.Image):
             raise ValueError(f"Can only perform Jitter on PIL.Image.Image, not  '{type(image)}'")
-        return self.__transform(image), transcript
+        return {"image": self.__transform(image), "transcript": transcript}
 
 
 class RandomPerspective(object):
@@ -166,7 +166,7 @@ class RandomPerspective(object):
         self.fillcolor = fillcolor
 
     def __call__(self, sample):
-        image, transcript = sample
+        image, transcript = sample["image"], sample["transcript"]
         if not (type(image) == PIL.Image.Image):
             raise ValueError("Can only perform random perspective on PIL.Image.Image, not  '{}'".format(type(image)))
         return {"image": self.__warp(image), "transcript": transcript}
