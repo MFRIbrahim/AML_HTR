@@ -24,7 +24,11 @@ def get_available_device():
     return device
 
 
-def dynamic_learning_rate(epoch):
+def dynamic_learning_rate_small(epoch):
+    return 1e-4
+
+
+def dynamic_learning_rate_big(epoch):
     if epoch < 50:
         return 1e-4
     elif epoch < 100:
@@ -193,10 +197,15 @@ def epoch_main(config_name):
 
         environment = TrainingEnvironment.from_config(environment_config)
 
+        if "small" in model_config.name.lower():
+            learning_rate = dynamic_learning_rate_small
+        else:
+            learning_rate = dynamic_learning_rate_big
+
         trainer = Trainer(name=training_config.name,
                           model=model,
                           word_prediction=word_predictor_debug,
-                          dynamic_learning_rate=dynamic_learning_rate,
+                          dynamic_learning_rate=learning_rate,
                           environment=environment
                           )
         stats = Statistics.get_instance(training_config.name)
@@ -233,4 +242,4 @@ def run_config(config_name):
 
 if __name__ == "__main__":
     logger = get_htr_logger(__name__)
-    run_config("config_05")
+    run_config("config_04")

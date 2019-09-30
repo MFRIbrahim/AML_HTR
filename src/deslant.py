@@ -21,7 +21,6 @@ class Result:
 
 
 def deslant_image(img, bgcolor=255, alpha_vals=(-0.3, -0.2, -0.1, -0.05, 0.0, 0.05, 0.1, 0.2, 0.3)):
-    # TODO function too complex
     """
     Deslant image by calculating its slope and then rotating it overcome the effect of that shift.
     Args:
@@ -40,10 +39,6 @@ def deslant_image(img, bgcolor=255, alpha_vals=(-0.3, -0.2, -0.1, -0.05, 0.0, 0.
         img = img[0]
 
     _, img_bw = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-
-    # FIXME potentially useless?
-    # alpha_vals = alpha_vals
-    # sum_alpha = [0]*len(alpha_vals)
 
     results = []
     for i in range(len(alpha_vals)):

@@ -12,7 +12,8 @@
   },
   "data_set": {
     "meta_path": "../dataset/words.txt",
-    "images_path": "../dataset/images",
+    "images_path": "../dataset/images",,
+    "max_word_length": 32,
     "pre_processor": {
       "name": "Deslant"
     }
@@ -63,7 +64,7 @@
     }
   },
   "model": {
-    "name": "Net",
+    "name": "SmallNet",
     "parameters": {
       "dropout": 0.2
     }

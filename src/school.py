@@ -35,6 +35,9 @@ class TrainingEnvironment(object):
     def max_epochs(self):
         return self.__max_epochs
 
+    def update_max_epochs(self, already_done):
+        self.__max_epochs = self.__max_epochs - already_done
+
     @property
     def warm_start(self):
         return self.__warm_start
@@ -129,9 +132,12 @@ class Trainer(object):
         if self.__environment.warm_start:
             try:
                 total_epochs, state_dict, loss = self.__load_progress()
+                self.__environment.update_max_epochs(total_epochs)
                 self.__model.load_state_dict(state_dict)
             except RuntimeError:
                 logger.warning("Warm start was not possible!")
+
+        logger.info(f"Begin training for {self.__environment.max_epochs} epochs")
 
         for epoch_idx in range(1, self.__environment.max_epochs + 1):
             enter_msg = f"Train Epoch: {epoch_idx: 4d} (total: {total_epochs + 1: 4d})"
@@ -188,6 +194,16 @@ class Trainer(object):
             if batch_id == 0:
                 first_batch_words = self.__print_words_in_batch(ctc_input)
             loss = loss_fct(ctc_input, ctc_target, input_lengths, target_lengths)
+            if not loss < 1e38:
+                logger.warning(f"Loss bigger than threshold 1e38. Skipping back propagation, words {label_batch}")
+                loss.to(device="cpu")
+                ctc_target.to(device="cpu")
+                ctc_input.to(device="cpu")
+                input_lengths.to(device="cpu")
+                target_lengths.to(device="cpu")
+                del loss, ctc_target, target_lengths, input_lengths, ctc_input
+                torch.cuda.empty_cache()
+                continue
             mean_loss += loss.item()
             loss.backward()
             optimizer.step()
@@ -197,7 +213,7 @@ class Trainer(object):
     def __print_words_in_batch(self, ctc_input):
         cpu_input = np.array(copy(ctc_input).detach().cpu())
         out = self.__word_prediction(cpu_input)
-        logger.debug("{:02d}: avg{}, '{}'".format(len(out), sum([len(x) for x in out]) / len(out), out))
+        logger.debug("{:02d}: avg{}".format(len(out), sum([len(x) for x in out]) / len(out)))
         return out
 
     def __save_progress(self, total_epochs, model, loss):
@@ -352,7 +368,7 @@ class KfoldTrainer(object):
 
             loss = loss_fct(ctc_input, ctc_target, input_lengths, target_lengths)
             if not loss < 1e38:
-                logger.debug("Loss bigger than threshold 1e38. Skipping back propagation")
+                logger.warning("Loss bigger than threshold 1e38. Skipping back propagation")
                 continue
             mean_loss += loss.item()
             loss.backward()

@@ -146,7 +146,7 @@ class WordsDataSet(Dataset):
         if type(idx) == TorchTensor:
             idx = idx.item()
         meta = self.__words[idx]
-        logger.debug(self.__words[idx].transcription)
+        #logger.debug(self.__words[idx].transcription)
         if self.__pre_processor is None:
             path = meta.path(self.__root_dir)
             image = cv2.imread(path)

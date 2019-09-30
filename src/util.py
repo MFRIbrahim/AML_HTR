@@ -179,4 +179,7 @@ class Replacer(object):
         result = self._left_pipe.sub(r'\g<2>', result)
         result = self._right_pipe.sub(r'\g<2>', result)
         result = result.replace(") :", "):")
-        return result.replace('|', ' ').replace("  ", " ")
+        result = result.replace('|', ' ').replace("  ", " ")
+        #if result.count("-") > 1 and len(result) is 53:
+        #    logger.error(f"{line} {result}")
+        return result
