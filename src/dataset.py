@@ -8,8 +8,10 @@ import numpy as np
 from torch import Tensor as TorchTensor
 from torch.utils.data import Dataset, DataLoader, random_split
 from torch.utils.data.dataset import Subset
+from sklearn.model_selection import KFold
 
 from util import TimeMeasure, is_file, make_directories_for_file
+from transformations import right_strip
 
 logger = logging.getLogger(__name__)
 
@@ -83,7 +85,19 @@ class WordsDataSet(Dataset):
         else:
             for idx, word_meta in enumerate(self.__words):
                 try:
-                    self[idx]
+                    img, word = self[idx]
+                    stripped = right_strip(list(map(int, word)), 1)
+                    num_chars = len(stripped)
+                    if num_chars > 32:
+                        raise(ValueError("Word too long"))
+
+                    for i in range(len(stripped)):
+                        if i > 0:
+                            if stripped[i-1] == stripped[i]:
+                                num_chars += 1
+                    if num_chars > 32:
+                        raise(ValueError("Word too long"))
+
                 except (cv2.error, ValueError) as e:
                     logger.error(f"Corrupted file at index: {idx}")
                     to_delete.append(idx)
@@ -265,16 +279,47 @@ def get_data_loaders(meta_path, images_path, transformation, augmentation, data_
             train_data_set, test_data_set = random_split(data_set, (train_size, test_size))
 
         if augmentation is not None:
-            train_data_set = AugmentedDataSet(train_data_set, augmentation)
+            augmented_data_set = AugmentedDataSet(train_data_set, augmentation)
+        else:
+            augmented_data_set = train_data_set
 
     if not loaded:
         __save_train_test_split(save_path, train_data_set, test_data_set)
 
     with TimeMeasure(enter_msg="Init data loader", writer=logger.debug):
-        train_loader = DataLoader(train_data_set, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=False)
+        train_loader = DataLoader(augmented_data_set, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=False)
+        train_eval_loader = DataLoader(train_data_set, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=False)
         test_loader = DataLoader(test_data_set, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=False)
 
-    return train_loader, test_loader
+    return train_loader, train_eval_loader, test_loader
+
+
+def get_data_loaders_cv(meta_path,
+                        images_path,
+                        transformation,
+                        augmentation,
+                        data_loading_config,
+                        pre_processor=None,
+                        number_of_splits=3):
+    batch_size = data_loading_config.batch_size
+
+    with TimeMeasure(enter_msg="Begin initialization of data set.",
+                     exit_msg="Finished initialization of data set after {}.",
+                     writer=logger.debug):
+        data_set = WordsDataSet(meta_path, images_path, transform=transformation, pre_processor=pre_processor)
+
+    with TimeMeasure(enter_msg="Splitting data set", writer=logger.debug):
+        train_test_array = cv_split(data_set, number_of_splits, augmentation)
+
+    with TimeMeasure(enter_msg="Init data loader", writer=logger.debug):
+        loader_array = []
+        for train_set, test_set, augmented_set in train_test_array:
+            train_eval_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=False)
+            test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=False)
+            train_loader = DataLoader(augmented_set, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=False)
+            loader_array.append((train_loader, train_eval_loader, test_loader))
+
+    return loader_array
 
 
 def __save_train_test_split(path, train_data_set, test_data_set):
@@ -316,3 +361,30 @@ class AugmentedDataSet(Dataset):
     @property
     def indices(self):
         return self.__source.indices
+
+
+def cv_split(dataset, n, augmentation=None):
+    """
+    Split the dataset into n non-overlapping new datasets where one is used for testing and
+    return an array that contains the sequence of splits.
+
+    Arguments:
+        dataset (Dataset): Dataset to be split
+        n (int): number of non-overlapping new datasets
+        augmentation : augmentations
+    """
+    cv = KFold(n_splits=n, random_state=0)
+    res = []
+
+    for train_index, test_index in cv.split(dataset):
+        train_set = Subset(dataset, train_index)
+        test_set = Subset(dataset, test_index)
+
+        if augmentation is not None:
+            augmented_set = AugmentedDataSet(train_set, augmentation)
+        else:
+            augmented_set = train_set
+
+        res.append((train_set, test_set, augmented_set))
+
+    return res

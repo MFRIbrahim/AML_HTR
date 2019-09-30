@@ -46,7 +46,7 @@
     "name": "Standard_Net-small_500",
     "retrain": true,
     "environment": {
-      "epochs": 500,
+      "epochs": 150,
       "warm_start": false,
       "loss": {
         "name": "CTC"

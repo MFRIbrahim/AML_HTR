@@ -93,7 +93,7 @@
     },
     {
       "name": "train",
-      "data_loader": "locals://train_loader"
+      "data_loader": "locals://train_eval_loader"
     }
   ]
 }
