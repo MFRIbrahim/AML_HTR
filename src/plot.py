@@ -88,7 +88,7 @@ if __name__ == "__main__":
     preprocessors = ("Deslant", "Standard")
     names = ("big", "small",)
     augmentations = ("", "_augmentations")
-    kind_of_stat = {"small": ("acc", "cer"), "big": ("acc", "wer")}
+    kind_of_stat = {"small": ("acc", "cer"), "big": ("acc", "cer", "wer")}
 
     for preprocessor in preprocessors:
         for name in names:
