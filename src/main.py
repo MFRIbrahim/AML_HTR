@@ -220,4 +220,4 @@ def run_config(config_name):
 
 if __name__ == "__main__":
     logger = get_htr_logger(__name__)
-    run_config("config_02_cross-val")
+    run_config("config_01_cross-val")
