@@ -11,9 +11,9 @@
     }
   },
   "data_set": {
-    "meta_path": "../dataset/words.txt",
-    "images_path": "../dataset/images",
-    "max_word_length": 32,
+    "meta_path": "../dataset/sentences.txt",
+    "images_path": "../dataset/sentences",
+    "max_word_length": 100,
     "pre_processor": {
       "name": "Deslant"
     }
@@ -26,14 +26,14 @@
       {
         "name": "PadTranscript",
         "parameters": {
-          "max_word_length": 32
+          "max_word_length": 100
         }
       },
       {
         "name": "Rescale",
         "parameters": {
-          "new_width": 128,
-          "new_height": 32
+          "new_width": 800,
+          "new_height": 64
         }
       },
       {
@@ -43,32 +43,11 @@
         }
       }
     ],
-    "augmentations": [
-      {
-        "pre": "TensorToPIL",
-        "transformations": [
-          "RandomRotateAndTranslate",
-          "RandomJitter",
-          "RandomPerspective"
-        ],
-        "post": {
-          "name": "ToTensor",
-          "parameters": {
-            "char_to_int": "locals://de_en_coder/char_to_idx"
-          }
-        }
-      },
-      {
-        "transformations": [
-          "RandomErasing"
-        ]
-      }
-    ],
-    "save_path": "../dataset_splits/Deslant_Net-small_500_augmentations.sav",
-    "restore_path": "../dataset_splits/Deslant_Net-small_500_augmentations.sav"
+    "save_path": "../dataset_splits/Deslant_Net-big_150.sav",
+    "restore_path": "../dataset_splits/Deslant_Net-big_150.sav"
   },
   "training": {
-    "name": "Deslant_Net-small_500_augmentations",
+    "name": "Deslant_Net-big_150",
     "retrain": true,
     "environment": {
       "epochs": 150,
@@ -85,7 +64,7 @@
     }
   },
   "model": {
-    "name": "SmallNet",
+    "name": "BigNet",
     "parameters": {
       "dropout": 0.2
     }

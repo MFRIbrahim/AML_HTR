@@ -1,3 +1,4 @@
+import re
 import time
 from collections import Mapping
 from glob import glob
@@ -148,3 +149,37 @@ def pretty_time_interval(millis):
     hours, minutes = divmod(minutes, 60)
     days, hours = divmod(hours, 24)
     return f"{days}d {hours}h {minutes}min {seconds}sec {millis}ms"
+
+
+def build_phrased_regex(left, right):
+    return re.compile(r"(?P<left>\|)?" +
+                      r"(?P<leftCore>" + left + r")"
+                      + r"\|(?P<core>[a-zA-Z0-9.\s|]+)\|"
+                      + "(?P<rightCore>" + right + r")"
+                      + r"(?P<right>\|)?")
+
+
+class Replacer(object):
+    def __init__(self):
+        phrased_regex = build_phrased_regex(left='"', right='"')
+        par_regex = build_phrased_regex(left=r'\(', right=r'\)')
+        self._regex_pipeline = (phrased_regex, par_regex)
+
+        self._abbreviation = re.compile(r"(\w+\.)\|(\w+)")
+        self._left_pipe = re.compile(r"(\|([\s!\\\"#&'()*+,\-./:;?]+))")
+        self._right_pipe = re.compile(r"(([\s!\\\"#&'()*+,\-./:;?]+)\|)")
+
+    def __call__(self, line):
+        result = line.replace("|,|", ", ")
+        for reg in self._regex_pipeline:
+            result = reg.sub(r'\g<left> \g<leftCore>\g<core>\g<rightCore>\g<right> ', result)
+
+        result = self._abbreviation.sub(r'\g<1> \g<2>', result)
+        result = self._abbreviation.sub(r'\g<1> \g<2>', result)
+        result = self._left_pipe.sub(r'\g<2>', result)
+        result = self._right_pipe.sub(r'\g<2>', result)
+        result = result.replace(") :", "):")
+        result = result.replace('|', ' ').replace("  ", " ")
+        #if result.count("-") > 1 and len(result) is 53:
+        #    logger.error(f"{line} {result}")
+        return result

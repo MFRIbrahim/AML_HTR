@@ -1,10 +1,13 @@
 import torch
 from torch import nn as nn
+from big_model import Net as BigNet
 
 
 def get_model_by_name(name):
-    if name == "Net":
+    if name == "SmallNet":
         return lambda params: Net(**params)
+    if name == "BigNet":
+        return lambda params: BigNet(**params)
     else:
         raise RuntimeError(f"Unknown specified network '{name}'")
 

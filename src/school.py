@@ -35,6 +35,9 @@ class TrainingEnvironment(object):
     def max_epochs(self):
         return self.__max_epochs
 
+    def update_max_epochs(self, already_done):
+        self.__max_epochs = self.__max_epochs - already_done
+
     @property
     def warm_start(self):
         return self.__warm_start
@@ -119,7 +122,7 @@ class Trainer(object):
         self.__environment = TrainingEnvironment() if environment is None else environment
         self.model_eval = lambda current_model: dict()
 
-    def train(self, train_loader, current_epoch=0, device="cpu"):
+    def train(self, train_loader, de_en_coder, current_epoch=0, device="cpu"):
         logger.info("Enter training mode.")
         total_epochs = current_epoch
         last_save, loss = 0, None
@@ -129,9 +132,12 @@ class Trainer(object):
         if self.__environment.warm_start:
             try:
                 total_epochs, state_dict, loss = self.__load_progress()
+                self.__environment.update_max_epochs(total_epochs)
                 self.__model.load_state_dict(state_dict)
             except RuntimeError:
                 logger.warning("Warm start was not possible!")
+
+        logger.info(f"Begin training for {self.__environment.max_epochs} epochs")
 
         for epoch_idx in range(1, self.__environment.max_epochs + 1):
             enter_msg = f"Train Epoch: {epoch_idx: 4d} (total: {total_epochs + 1: 4d})"
@@ -139,7 +145,7 @@ class Trainer(object):
                              writer=logger.info,
                              print_enabled=self.__print_enabled) as tm:
                 current_learning_rate = self.__learning_rate_adaptor(total_epochs)
-                loss, words = self.core_training(train_loader, current_learning_rate, device)
+                loss, words = self.core_training(train_loader, current_learning_rate, device, de_en_coder)
                 logger.info("loss: {}".format(loss))
                 total_epochs += 1
 
@@ -161,18 +167,18 @@ class Trainer(object):
         dictionary = load_latest_checkpoint(directory)
         return dictionary["total_epochs"], dictionary["model_states"], dictionary["loss"]
 
-    def core_training(self, train_loader, learning_rate, device):
+    def core_training(self, train_loader, learning_rate, device, de_en_coder):
         loss_fct = self.__environment.loss_function.to(device)
         optimizer = self.__environment.create_optimizer(self.__model, learning_rate)
         self.__model.train(mode=True)
         mean_loss = 0
         first_batch_words = list()
 
-        for (batch_id, (feature_batch, label_batch)) in enumerate(train_loader):
+        for (batch_id, (feature_batch, word_batch)) in enumerate(train_loader):
             self.__model.init_hidden(batch_size=feature_batch.size()[0], device=device)
             feature_batch = feature_batch.to(device)
             label_batch = [np.asarray(right_strip(list(map(int, word)), 1)) for word in
-                           word_tensor_to_list(label_batch)]
+                           word_tensor_to_list(word_batch)]
             optimizer.zero_grad()
             model_out = self.__model(feature_batch)
             ctc_input = F.log_softmax(model_out, dim=-1).to(device)
@@ -187,8 +193,17 @@ class Trainer(object):
 
             if batch_id == 0:
                 first_batch_words = self.__print_words_in_batch(ctc_input)
-
             loss = loss_fct(ctc_input, ctc_target, input_lengths, target_lengths)
+            if not loss < 1e38:
+                logger.warning(f"Loss bigger than threshold 1e38. Skipping back propagation, words {label_batch}")
+                loss.to(device="cpu")
+                ctc_target.to(device="cpu")
+                ctc_input.to(device="cpu")
+                input_lengths.to(device="cpu")
+                target_lengths.to(device="cpu")
+                del loss, ctc_target, target_lengths, input_lengths, ctc_input
+                torch.cuda.empty_cache()
+                continue
             mean_loss += loss.item()
             loss.backward()
             optimizer.step()
@@ -198,8 +213,7 @@ class Trainer(object):
     def __print_words_in_batch(self, ctc_input):
         cpu_input = np.array(copy(ctc_input).detach().cpu())
         out = self.__word_prediction(cpu_input)
-        # for i, word in enumerate(out):
-        #   logger.debug("{:02d}: '{}'".format(i, word))
+        logger.debug("{:02d}: avg{}".format(len(out), sum([len(x) for x in out]) / len(out)))
         return out
 
     def __save_progress(self, total_epochs, model, loss):
@@ -211,11 +225,11 @@ class Trainer(object):
 
     def __save_period_stats(self, total_epochs):
         stats = Statistics.get_instance(self.__name)
-        accs = self.model_eval()
+        accs = self.model_eval(self.__model)
 
         stats.save_per_period(total_epochs,
-                              train_acc=accs.get("train", 0.0),
-                              test_acc=accs.get("test", 0.0))
+                              train_metrics=accs.get("train", 0.0),
+                              test_metrics=accs.get("test", 0.0))
 
     def load_latest_model(self):
         total_epochs, state_dict, loss = self.__load_progress()
@@ -354,7 +368,7 @@ class KfoldTrainer(object):
 
             loss = loss_fct(ctc_input, ctc_target, input_lengths, target_lengths)
             if not loss < 1e38:
-                logger.debug("Loss bigger than threshold 1e38. Skipping back propagation")
+                logger.warning("Loss bigger than threshold 1e38. Skipping back propagation")
                 continue
             mean_loss += loss.item()
             loss.backward()
