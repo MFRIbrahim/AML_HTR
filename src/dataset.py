@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 from json import dump as json_write, load as json_read
 
 import cv2
@@ -10,7 +11,7 @@ from torch.utils.data import Dataset, DataLoader, random_split
 from torch.utils.data.dataset import Subset
 from sklearn.model_selection import KFold
 
-from util import TimeMeasure, is_file, make_directories_for_file
+from util import TimeMeasure, is_file, make_directories_for_file, Replacer
 from transformations import right_strip
 
 logger = logging.getLogger(__name__)
@@ -19,13 +20,14 @@ logger = logging.getLogger(__name__)
 class WordsDataSet(Dataset):
     __health_state = "health_state{}.json"
 
-    def __init__(self, meta_file, root_dir, transform=None, pre_processor=None):
+    def __init__(self, meta_file, root_dir, transform=None, pre_processor=None, max_word_length=32):
         self.__meta_file = meta_file
         self.__words = list()
         self.__root_dir = root_dir
         self.__transform = transform
         self.__statistics = None
         self.__pre_processor = pre_processor
+        self.__max_word_length = max_word_length
 
         if self.__pre_processor is None:
             logger.info("No pre-processor selected.")
@@ -49,13 +51,14 @@ class WordsDataSet(Dataset):
             self.__create_statistics()
 
     def __process_meta_file(self):
+        is_sentence = "sentences" in self.__meta_file
         with open(self.__meta_file, 'r') as fp:
             for line in fp:
-                self.__process_meta_line(line)
+                self.__process_meta_line(line, is_sentence=is_sentence)
 
-    def __process_meta_line(self, line):
+    def __process_meta_line(self, line, is_sentence=False):
         if not line.startswith("#"):
-            self.__words.append(WordsMetaData.parse(line))
+            self.__words.append(WordsMetaData.parse(line, is_sentence=is_sentence))
 
     def __availability_check(self):
         to_delete = []
@@ -87,17 +90,7 @@ class WordsDataSet(Dataset):
                 try:
                     img, word = self[idx]
                     stripped = right_strip(list(map(int, word)), 1)
-                    num_chars = len(stripped)
-                    if num_chars > 32:
-                        raise(ValueError("Word too long"))
-
-                    for i in range(len(stripped)):
-                        if i > 0:
-                            if stripped[i-1] == stripped[i]:
-                                num_chars += 1
-                    if num_chars > 32:
-                        raise(ValueError("Word too long"))
-
+                    self.__check_word_length(stripped)
                 except (cv2.error, ValueError) as e:
                     logger.error(f"Corrupted file at index: {idx}")
                     to_delete.append(idx)
@@ -107,6 +100,17 @@ class WordsDataSet(Dataset):
 
         logger.info(f"WordsDataSet - Health Check: {len(to_delete)} indices={to_delete} not readable.")
         self.__save_delete_indices(to_delete)
+
+    def __check_word_length(self, stripped):
+        num_chars = len(stripped)
+        if num_chars > self.__max_word_length:
+            raise (ValueError("Word too long"))
+
+        for i in range(len(stripped)):
+            if i > 0 and stripped[i - 1] == stripped[i]:
+                num_chars += 1
+        if num_chars > self.__max_word_length:
+            raise (ValueError("Word too long"))
 
     def __create_statistics(self):
         min_length, max_length, summed_length = np.inf, 0, 0
@@ -142,7 +146,7 @@ class WordsDataSet(Dataset):
         if type(idx) == TorchTensor:
             idx = idx.item()
         meta = self.__words[idx]
-
+        #logger.debug(self.__words[idx].transcription)
         if self.__pre_processor is None:
             path = meta.path(self.__root_dir)
             image = cv2.imread(path)
@@ -198,6 +202,9 @@ class BoundingBox(object):
 
 
 class WordsMetaData(object):
+
+    _replace = Replacer()
+
     def __init__(self, wid, segmentation_state, gray_level, bounding_box, pos_tag, transcription):
         """
 
@@ -214,6 +221,7 @@ class WordsMetaData(object):
         self.__bounding_box = bounding_box
         self.__pos_tag = pos_tag
         self.__transcription = transcription
+
 
     @property
     def word_id(self):
@@ -245,7 +253,7 @@ class WordsMetaData(object):
         return os.path.join(root, folder, folder + "-" + subfolder, wid + ".png")
 
     @staticmethod
-    def parse(line):
+    def parse(line, is_sentence=False):
         line = line.strip()
         parts = line.split(" ")
         wid = parts[0]
@@ -254,10 +262,19 @@ class WordsMetaData(object):
         pos_tag = parts[7]
         transcription = parts[8]
         box = BoundingBox(x=parts[3], y=parts[4], w=parts[5], h=parts[6])
+
+        if is_sentence:
+            wid = parts[0]
+            state = parts[2]
+            gray_level = parts[3]
+            pos_tag = parts[4]
+            transcription = WordsMetaData._replace(parts[9])
+            box = BoundingBox(x=parts[5], y=parts[6], w=parts[7], h=parts[8])
+
         return WordsMetaData(wid, state, gray_level, box, pos_tag, transcription)
 
 
-def get_data_loaders(meta_path, images_path, transformation, augmentation, data_loading_config, pre_processor=None):
+def get_data_loaders(meta_path, images_path, transformation, augmentation, data_loading_config, pre_processor=None, max_word_length=32):
     relative_train_size = data_loading_config.train_size
     batch_size = data_loading_config.batch_size
     restore_path = data_loading_config.get("restore_path", default=None)
@@ -266,7 +283,11 @@ def get_data_loaders(meta_path, images_path, transformation, augmentation, data_
     with TimeMeasure(enter_msg="Begin initialization of data set.",
                      exit_msg="Finished initialization of data set after {}.",
                      writer=logger.debug):
-        data_set = WordsDataSet(meta_path, images_path, transform=transformation, pre_processor=pre_processor)
+        data_set = WordsDataSet(meta_path,
+                                images_path,
+                                transform=transformation,
+                                pre_processor=pre_processor,
+                                max_word_length=max_word_length)
 
     with TimeMeasure(enter_msg="Splitting data set", writer=logger.debug):
         if restore_path is not None and os.path.exists(restore_path):
@@ -287,9 +308,21 @@ def get_data_loaders(meta_path, images_path, transformation, augmentation, data_
         __save_train_test_split(save_path, train_data_set, test_data_set)
 
     with TimeMeasure(enter_msg="Init data loader", writer=logger.debug):
-        train_loader = DataLoader(augmented_data_set, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=False)
-        train_eval_loader = DataLoader(train_data_set, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=False)
-        test_loader = DataLoader(test_data_set, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=False)
+        train_loader = DataLoader(augmented_data_set,
+                                  batch_size=batch_size,
+                                  shuffle=True,
+                                  num_workers=8,
+                                  drop_last=False)
+        train_eval_loader = DataLoader(train_data_set,
+                                       batch_size=batch_size,
+                                       shuffle=True,
+                                       num_workers=8,
+                                       drop_last=False)
+        test_loader = DataLoader(test_data_set,
+                                 batch_size=batch_size,
+                                 shuffle=True,
+                                 num_workers=8,
+                                 drop_last=False)
 
     return train_loader, train_eval_loader, test_loader
 
@@ -318,6 +351,7 @@ def get_data_loaders_cv(meta_path,
             test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=False)
             train_loader = DataLoader(augmented_set, batch_size=batch_size, shuffle=True, num_workers=8, drop_last=False)
             loader_array.append((train_loader, train_eval_loader, test_loader))
+
 
     return loader_array
 

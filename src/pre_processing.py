@@ -32,7 +32,8 @@ class DeslantPreprocessor(object):
 
     def __call__(self, meta, img_directory):
         root = os.path.dirname(img_directory)
-        deslant_path = meta.path(os.path.join(root, self.name.lower() + "_images"))
+        basename = os.path.basename(img_directory)
+        deslant_path = meta.path(os.path.join(root, self.name.lower() + "_" + basename))
 
         if not is_file(deslant_path):
             make_directories_for_file(deslant_path)
