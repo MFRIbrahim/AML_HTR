@@ -13,13 +13,13 @@
 \contentsline {subsubsection}{\numberline {3.1.1}Deslanting}{13}{subsubsection.3.1.1}
 \contentsline {subsection}{\numberline {3.2}Metrics}{15}{subsection.3.2}
 \contentsline {subsection}{\numberline {3.3}Word Recognition Model}{16}{subsection.3.3}
-\contentsline {subsubsection}{\numberline {3.3.1}CNN}{16}{subsubsection.3.3.1}
+\contentsline {subsubsection}{\numberline {3.3.1}CNN}{17}{subsubsection.3.3.1}
 \contentsline {subsubsection}{\numberline {3.3.2}RNN}{17}{subsubsection.3.3.2}
 \contentsline {subsection}{\numberline {3.4}Text Line Recognition Model}{18}{subsection.3.4}
-\contentsline {section}{\numberline {4}Results}{19}{section.4}
-\contentsline {section}{\numberline {5}Discussion}{23}{section.5}
-\contentsline {subsection}{\numberline {5.1}Deeper Network}{23}{subsection.5.1}
-\contentsline {subsubsection}{\numberline {5.1.1}Deep CNN}{23}{subsubsection.5.1.1}
-\contentsline {subsubsection}{\numberline {5.1.2}Deep RNN}{23}{subsubsection.5.1.2}
-\contentsline {subsection}{\numberline {5.2}Multidimensional LSTM}{23}{subsection.5.2}
-\contentsline {section}{\numberline {6}References}{26}{section.6}
+\contentsline {section}{\numberline {4}Results}{20}{section.4}
+\contentsline {section}{\numberline {5}Discussion}{24}{section.5}
+\contentsline {subsection}{\numberline {5.1}Deeper Network}{24}{subsection.5.1}
+\contentsline {subsubsection}{\numberline {5.1.1}Deep CNN}{24}{subsubsection.5.1.1}
+\contentsline {subsubsection}{\numberline {5.1.2}Deep RNN}{24}{subsubsection.5.1.2}
+\contentsline {subsection}{\numberline {5.2}Multidimensional LSTM}{24}{subsection.5.2}
+\contentsline {section}{\numberline {6}References}{27}{section.6}

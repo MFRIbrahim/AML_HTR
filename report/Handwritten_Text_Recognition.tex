@@ -26,7 +26,8 @@
 
 \begin{document}
 
-\title{Handwritten Text Recognition}
+\title{Handwritten Text Recognition \\ \vspace{3mm}
+\small Github Repository: \url{https://github.com/MadoScientistu/AML_HTR/}}
 \date{September, 2019}
 \author{Armand Rousselot, Christopher Schuster, Mustafa Fuad Rifet Ibrahim}
 
@@ -36,6 +37,9 @@
 
 \newpage
 \section{Introduction}
+
+\textbf{by Mustafa Ibrahim} \\
+
 Handwritten Text Recognition (HTR) refers to the task of recognizing handwritten text from sources such as photographs, scanned documents, etc. and transcribing that to digital text (Figure \ref{fig:SampleData}).
 Traditionally, the task of recognizing handwritten text would involve several different steps and methods such as segmenting and extracting individual characters from the lines (or pages) of scanned text and using intelligently crafted features to recognize those characters. Crafting the features is an arduous task and extracting individual characters is a challenging image recognition task in and of itself. Since 2009, when neural networks developed by J\"urgen Schmidhuber and his research group at the Swiss AI Lab IDSIA won multiple international handwritten text recognition competitions\cite{Angelica}, neural networks became more and more prominent in the scene of handwritten text recognition. These neural networks consisted of a combination of two different architectures, namely Convolutional Neural Networks (CNN) and Recurrent Neural Networks (RNN). In this project our goal was to implement and expand a model for handwritten text recognition that uses precisely that combination of architectures. 
 \begin{figure}[h]
@@ -51,6 +55,9 @@ Traditionally, the task of recognizing handwritten text would involve several di
 This section assumes basic knowledge about the concept of neural networks and the mathematics behind it. Further specific knowledge about relevant architectures will be explained.
 
 \subsection{Convolutional Neural Networks}
+
+\textbf{by Christopher Schuster} \\
+
 Convolutional Neural Networks (CNNs) differ from the basic Fully Connected Neural Network (FCNN) in the fact that they are specifically built for processing images. In a FCNN images don't scale well, as the amount of parameters grows rapidly with increasing image size. A CNN handles this problem by having only local spatial connections between neurons of two layers. To understand how this is accomplished, two basic parts are essential, namely the convolutional layers and the pooling layers\cite{Goodfellow1}\cite{Stanford}.
 \subsubsection{Convolutional Layers}
 The convolutional layer consists of filters (or kernels) that have a certain spatial extension, i.e. along the width and height of the image, and a full extension along the depth of the input. The depth of the input describes the number of channels e.g. 3 color channels in a RGB image. During the forward pass, these filters are slidden across the image and a dot product is computed between the entries of the filter and the input values of the image (Figure \ref{fig:Convolution}). The result is a 2D activation map (one per filter) and when these maps are stacked along the depth dimension, they represent the output volume of the convolutional layer.
@@ -78,6 +85,9 @@ The pooling layers fulfill the task of downsampling the input and thus decreasin
 \end{figure}
 
 \subsection{Recurrent Neural Networks}
+
+\textbf{by Armand Rousselot} \\
+
 Recurrent Neural Networks (RNN) are a type of neural network architecture that allow for information of a previous inputs to persist, so that predictions can be made, within the context of the sequence of data that the features stemmed from. This enables a neural network to solve problems like guessing the most probable last word of a sentence\cite{Goodfellow2}.
 \subsubsection{Vanilla RNN}
 The standard RNN is composed of cells that take in an input \(x_t\) and computes an output based on this input as well as the so called "hidden state" of the cell. This new hidden state is combined with a new input \(x_{t+1}\) to generate the next output and hidden state. During all these calculation steps the same weights are used (Figure \ref{fig:RNNArchitecture}).
@@ -105,6 +115,9 @@ y_t &= W_{hy} h_t
 \]
 where the symbols have the same meaning as in Figure \ref{fig:RNNArchitecture} and \(f_y\) is some function applied to get the desired output. This means that information of past sequence parts persists in the form of the hidden state. The fact that the parameters \(W\) remain unchanged for all sequence elements means that we have parameter sharing. Just like CNNs introduce a form of parameter sharing effective for image inputs, RNNs achieve the same with sequential input. This allows the RNN to not be constrained by fixed input or output size. It is also possible to increase the amount of input information by connecting two layers in opposite direction. This is called Bidirectional RNN (BRNN) and can be thought of as the combination of two RNNs, one getting the sequence input in the normal order and the other getting the input sequence in reverse order. This enables the network to produce an output based on future and past sequence information, e.g. in the case of handwritten text recognition it enables the prediction based on the letters located before and after the current letter.
 \subsubsection{Long-Short-Term-Memory Networks}
+
+\textbf{by Mustafa Ibrahim} \\
+
 Vanilla RNNs run into problems when it comes to long input sequences where the correctness of the output hinges on the ability to connect pieces of information that are many time steps apart. Long-Short-Term-Memory Networks (LSTM) are a RNN variant that are particularly good at handling these long term dependencies. They differ from standard RNNs in the basic module or cell that accepts the input and hidden state and produces the next hidden state or output (Figure \ref{fig:LSTM}). While the standard RNNs have one non-linear function in the module, LSTMs have a more complex structure that involves different functions\cite{Olah}.
 \begin{figure}[H]
 \begin{center}
@@ -139,6 +152,10 @@ h_t &= o_t\cdot\tanh(C_t)
 The tanh here is used to constrain the values of the new cell state into the range from -1 to 1 before filtering. There are many variants of this basic LSTM architecture that bring certain advantages in specfic applications but a discussion of those augmentations is beyond the scope of this report.
 
 \subsection{Connectionist Temporal Classification}
+
+\textbf{by Christopher Schuster} \\
+
+
 Connectionist Temporal Classification (CTC) is the supervised learning algorithm used to train neural networks in sequential problems such as handwritten text recognition\cite{Hannun}. The straightforward way of doing supervised learning in this area would be to manually label every position in the input image to specify which areas of of the image are associated with which letter from the ground truth text. Then, the RNN would output its guess and the loss would punish for each character that was guessed wrong. This however is infeasible with large datasets. CTC provides a way to stop worrying about the alignment of input and output. It introduces a blank symbol that stands for no character recognized at this position to account for gaps between characters or words (or spoken words in speech recognition). It provides a way to properly decode repeat characters, and to map many different valid alignments to the ground truth.
 For a given output of the RNN simply merging repeat characters and then removing any blank symbol (in that order!) provides the actual output that can be compared against the ground truth. Taking this into account, the loss is then calculated by computing the probability for all valid alignments given a ground truth text and the output of the RNN which contains the character probabilities per time step. This is done by multiplying the character probabilities for each alignment and summing over all such valid alignments. Taking the negative log of this sum gives the loss. The model parameters are tuned to minimize that loss or in other words to maximize the probability the network assigns to the right answer. To illustrate, take the following situation:
 \begin{itemize}
@@ -173,6 +190,10 @@ If we let \(A\) be the set of all such valid alignments then the loss is calcula
 \text{loss} = -\log\left(\sum_A p(A)\right)
 \]
 \subsubsection{Inference}
+
+\textbf{by Armand Rousselot} \\
+
+
 To test the model, we need a method to extract a likely output text given the RNN output. The most intuitive way would be to simply take the alignment with the highest probability, which we call 'Best Path Decoding' in our project. This method works well if the most probable alignment has a significantly higher probability than the rest. Problems can arise when this is not the case. For example if we have only three characters: 'a', 'b' and the blank symbol '-' and we have two time steps \(t_0\) and \(t_1\), then given the following RNN output matrix:
 \begin{table}[H]
 \centering
@@ -207,6 +228,9 @@ A different algorithm called Beam Search Decoding accounts for cases like these.
 \section{Methods}
 
 \subsection{Data}
+
+\textbf{by Mustafa Ibrahim} \\
+
 All of the input images used to train the model are from the IAM Handwriting Database\cite{IAM}.
 In order to counteract overfitting and improve the accuracy, we applied the following transformations to the images while training: 
 \begin{itemize}
@@ -226,6 +250,10 @@ For each training batch we applied these transformations with a certain probabil
 \end{figure}
 
 \subsubsection{Deslanting}
+
+\textbf{by Armand Rousselot} \\
+
+
 In addition to the above mentioned augmentations we also preprocessed all images with a deslanting algorithm and tested whether or not using this deslanted training set as the default unaugmented base would result in an accuracy improvement. Deslanting describes the process of removing a slant or a slope in a written word, e.g. from a cursive writing style. The traditional deslanting algorithm by Bozinovic and Srihari \cite{Bozinovic} works as shown in Algorithm 1.
 
 \begin{algorithm}	
@@ -283,12 +311,19 @@ $\hat{\alpha} = argmax_{\alpha}(S(\alpha))$ \textcolor{gray}{//pick the best ang
 \end{algorithm}
 
 \subsection{Metrics}
+
+\textbf{by Armand Rousselot} \\
+
 The main two metrics used in the field of handwritten text recognition or speech recognition are the Character Error Rate (CER) and the Word Error Rate (WER). Both of these metrics are based on measuring the Levenshtein distance between the decoded output of the model and the ground truth text. The Levenshtein distance measures the minimum amount of insertions, deletions and substitutions needed to convert one word to another, in this case output to ground truth text. CER simply normalizes this distance relative to the number of characters in the ground truth text:\\
 \[
 \text{CER} = \frac{\text{\#insertions}+\text{\#deletions}+\text{\#substitutions}}{length(\text{GT})}
 \]\\ 
 where GT stands for the ground truth. WER works the same except for the fact that the sequence of words is used rather than the sequence of characters and that the normalization is done relative to the number of words instead of the number of characters. In addition to these metrics we also recorded the accuracy of the model as simply the percentage of correct predictions.
 \subsection{Word Recognition Model}
+
+\textbf{by Christoper Schuster} \\
+
+
 We based our initial approach on the Handwritten Text Recognition (HTR) system of Harald Scheidl\cite{ScheidlHTR}\cite{ScheidlCTC}. Our plan was to implement that model with Pytorch as our base line performance model and test out various methods to increase the accuracy. The base model consists of two main parts, namely a Convolutional Neural Network (CNN) and a Recurrent Neural Network (RNN) with a Connectionist Temporal Classification (CTC) output (Table \ref{tab:SmallModel}).
 \begin{table}[H]
 \centering
@@ -326,6 +361,9 @@ The RNN takes in the condensed sequence information and uses the extracted featu
 \label{fig:featureshapes}
 \end{figure}
 \subsection{Text Line Recognition Model}
+
+\textbf{by Armand Rousselot} \\
+
 In addition to the base line model, we also built a bigger model that can recognize entire text lines, i.e. multiple words at once. This model, that we took from the thesis of Harald Scheidl\cite{ScheidlThesis}, has a larger input size to make space for more words, as well as more CNN layers and an increased hidden size of the LSTM (Table \ref{tab:BigModel}).
 \begin{table}[H]
 \centering
@@ -350,7 +388,9 @@ CTC          &      & \(\leqslant\) 100 \\ \hline
 \newpage
 \section{Results}
 
-Figures \ref{fig:AccuracySmall} to \ref{fig:CERBig} provide an overview of the results we achieved and especially a comparison of augmented/deslanted datasets to their unprocessed counterparts. WER for the small model was not provided as it was trained on a single word dataset, in which $WER = 1 - Accuracy$. When looking at the small model, the train accuracy seems almost unaffected by the deslanting or augmentations, however deslanting clearly shows an improvement of test accuracy in Fig. \ref{fig:AccuracySmall} with and without augmentations. When looking at the CER in Fig \ref{fig:CERSmall} we can also see that while the effect is small, not only deslanting but also data augmentations improved the test CER. This effect might be greater if more aggressive augmentations were applied (higher chance and bigger effect of augmentations). The positive effect of deslanting is more pronounced in the big models. Overall, the big model performed worse than the small model. We cannot compare the accuracies directly, as the big model predicts whole lines of text while the small model only works on single words. However, we can compare the WER and CER of the two models and still find that the small model performs better. A possible reason for this might be the small number of epochs used for cross validation. The bigger model would likely benefit a lot more from a higher number of epochs. Another point can be made about predicting longer strings at once (i.e. whole sentences) being possibly way harder for a RNN. If the prediction of one letter is faulty and the hidden state is misadjusted, this could carry through the rest of the string. This is way more likely to happen if the output size is three times longer as it is for the big model, compared to the small model. 
+\textbf{by Mustafa Ibrahim, Armand Rousselot, Christopher Schuster} \\
+
+Figures \ref{fig:AccuracySmall} to \ref{fig:CERBig} provide an overview of the results we achieved and especially a comparison of augmented/deslanted datasets to their unprocessed counterparts. WER for the small model was not provided as it was trained on a single word dataset, in which $WER = 1 - Accuracy$. When looking at the small model, the train accuracy seems almost unaffected by the deslanting or augmentations, however deslanting clearly shows an improvement of test accuracy in Fig. \ref{fig:AccuracySmall} with and without augmentations. When looking at the CER in Fig \ref{fig:CERSmall} we can also see that while the effect is small, not only deslanting but also data augmentations improved the test CER. This effect might be greater if more aggressive augmentations were applied (higher chance and bigger effect of augmentations). The positive effect of deslanting is more pronounced in the big models. Overall, the big model performed worse than the small model. We cannot compare the accuracies directly, as the big model predicts whole lines of text while the small model only works on single words. However, we can compare the WER and CER of the two models and still find that the small model performs better. A possible reason for this might be the small number of epochs used for cross validation. The bigger model would likely benefit a lot more from a higher number of epochs. Another point can be made about predicting longer strings at once (i.e. whole sentences) being possibly way harder for a RNN. If the prediction of one letter is faulty and the hidden state is misadjusted, this could carry through the rest of the string. This is way more likely to happen if the output size is three times longer as it is for the big model, compared to the small model. The large gap between test and training data can, at least in part, be attributed to the bad dataset quality. The faulty pictures of the dataset were mostly labeled with "err" but we chose to leave them in the training and test set, to see how well the model would do under suboptimal circumstances. We looked at the 40 worst predictions (i.e. lowest probability of the ground truth) and found that most of them were faulty (crossed out words, wrongly cut words, etc.)
 
 \begin{minipage}[!h]{1\linewidth}
 \vspace{-30mm}
@@ -491,6 +531,9 @@ Figures \ref{fig:AccuracySmall} to \ref{fig:CERBig} provide an overview of the r
 \newpage
 \section{Discussion}
 \subsection{Deeper Network}
+
+\textbf{by Mustafa Ibrahim} \\
+
 Deeper neural networks are commonly known to perform better since adding more non-linear layers generally leads to the ability to approximate more complex functions and be more efficient at representing certain functions\cite{Bengio}\cite{LeRoux}\cite{Delalleau}\cite{Pascanu1}. In our case, we can deepen the network on multiple different levels.
 \subsubsection{Deep CNN}
 An obvious option is to increase the depth of the CNN of the model by increasing the number of layers. A more thorough processing of the image features before the RNN would make it easier to extract the correct letters.
@@ -501,7 +544,10 @@ The second way is to make the hidden-to-output function deeper by introducing in
 The third way is to make the hidden-to-hidden function deeper by using a simple Multilayer Perceptron (MLP) in between. This allows the model to adapt to changing modes of the input.\\
 The fourth way is to simply stack hidden layers on top of each other where the hidden states of the lower layers feed into the higher layers. This would allow the model to deal with different time scales in the input.
 \subsection{Multidimensional LSTM}
-The normal RNNs or LSTMs described in the theory section take in a sequence of inputs and propagate the context via one hidden state. They are inherently one dimensional and so for tasks like handwritten text recognition the input images must be reduced to only one spatial dimension, as we did using the CNN layers. Multidimensional RNNs however take in multi-dimensional inputs and use the context from those multiple dimensions in order to calculate the output\cite{Graves}. This is achieved by introducing as many hidden states or recurrent connections as there are input dimensions. In our case this translates to a 2D-LSTM. Just like with standard one dimensional RNNs there is the option of choosing how to traverse the given data. In the one dimensional case the aforementioned BRNNs solve the problem by traversing the data forwards and backwards. However, if we have an image with two dimensions we can traverse the pixels in many different ways in order to gain access to surrounding contextual information. For example, one way to include context data is to traverse from the upper left corner to the lower right, meaning that the context window would be a rectangle of which the current input pixel would be the lower right corner. An example of a network utilizing this kind of LSTM, taken from the thesis of Harald Scheidl\cite{ScheidlThesis}, can be see in Table \ref{tab:MDLSTM}. While Multidimensional LSTMs can lead to big imporvements on complicated, noisy datasets, they perform similar to 1D LSTMs on simpler datasets  \cite{Moysset}. Even though the annotations and pictures in the IAM Handwritten Database are sometimes faulty, the quality was overall very good, so Multidimensional LSTMs were not required.
+
+\textbf{by Mustafa Ibrahim} \\
+
+The normal RNNs or LSTMs described in the theory section take in a sequence of inputs and propagate the context via one hidden state. They are inherently one dimensional and so for tasks like handwritten text recognition the input images must be reduced to only one spatial dimension, as we did using the CNN layers. Multidimensional RNNs however take in multi-dimensional inputs and use the context from those multiple dimensions in order to calculate the output\cite{Graves}. This is achieved by introducing as many hidden states or recurrent connections as there are input dimensions. In our case this translates to a 2D-LSTM. Just like with standard one dimensional RNNs there is the option of choosing how to traverse the given data. In the one dimensional case the aforementioned BRNNs solve the problem by traversing the data forwards and backwards. However, if we have an image with two dimensions we can traverse the pixels in many different ways in order to gain access to surrounding contextual information. For example, one way to include context data is to traverse from the upper left corner to the lower right, meaning that the context window would be a rectangle of which the current input pixel would be the lower right corner. An example of a network utilizing this kind of LSTM, taken from the thesis of Harald Scheidl\cite{ScheidlThesis}, can be see in Table \ref{tab:MDLSTM}. While Multidimensional LSTMs can lead to big imporvements on complicated, noisy datasets, they perform similar to 1D LSTMs on simpler datasets  \cite{Moysset}. The IAM dataset contains various faulty images, most of them are labeled with "err". As we used these pictures for training and evaluation, using a 2D-LSTM would quite likely improve the results.
 \begin{table}[H]
 \centering
 \begin{tabular}{l|l|l}
