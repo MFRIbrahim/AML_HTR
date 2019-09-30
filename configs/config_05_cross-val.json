@@ -1,0 +1,79 @@
+{
+  "prediction": {
+    "char_list": "| !\"#&'()*+,-./0123456789:;?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
+    "word_prediction": {
+      "eval": {
+        "name": "BestPath"
+      },
+      "debug": {
+        "name": "BestPath"
+      }
+    }
+  },
+  "data_set": {
+    "meta_path": "../dataset/sentences.txt",
+    "images_path": "../dataset/sentences",
+    "max_word_length": 100
+  },
+  "data_loading": {
+    "train_size": 0.6,
+    "batch_size": 50,
+    "transformations": [
+      "GrayScale",
+      {
+        "name": "PadTranscript",
+        "parameters": {
+          "max_word_length": 100
+        }
+      },
+      {
+        "name": "Rescale",
+        "parameters": {
+          "new_width": 800,
+          "new_height": 64
+        }
+      },
+      {
+        "name": "ToTensor",
+        "parameters": {
+          "char_to_int": "locals://de_en_coder/char_to_idx"
+        }
+      }
+    ],
+    "save_path": "../dataset_splits/Standard_Net-big_150.sav",
+    "restore_path": "../dataset_splits/Standard_Net-big_150.sav"
+  },
+  "training": {
+    "name": "Standard_Net-big_150",
+    "retrain": true,
+    "environment": {
+      "epochs": 150,
+      "warm_start": false,
+      "loss": {
+        "name": "CTC"
+      },
+      "optimizer": {
+        "name": "Adam",
+        "parameters": {
+          "weight_decay": 0
+        }
+      }
+    }
+  },
+  "model": {
+    "name": "BigNet",
+    "parameters": {
+      "dropout": 0.2
+    }
+  },
+  "evaluation": [
+    {
+      "name": "test",
+      "data_loader": "locals://test_loader"
+    },
+    {
+      "name": "train",
+      "data_loader": "locals://train_eval_loader"
+    }
+  ]
+}
